@@ -1,0 +1,9 @@
+/target
+
+**/*.log
+*.svg
+*.svg.*
+*.perf
+*.folded
+perf.data
+perf.data.*

@@ -1,0 +1,17 @@
+[package]
+name = "async-1brc"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+deadqueue = "0.2.4"
+gxhash = "3.1.1"
+itertools = "0.12.1"
+tokio = { version = "1.36.0", features = ["rt-multi-thread", "io-std", "macros", "sync", "io-util", "fs", "time"] }
+
+[features]
+debug = ["tokio/time"]
+bench = ["tokio/time"]
+# io_only = ["tokio/time"]
