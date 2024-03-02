@@ -4,8 +4,8 @@ use std::io::Cursor;
 
 use tokio::io::AsyncReadExt;
 
-use super::{func, models};
 use super::super::config;
+use super::{func, models};
 
 /// Parse bytes into a [`models::StationRecords`].
 ///
@@ -16,7 +16,7 @@ use super::super::config;
 /// undefined.
 pub async fn parse_bytes(bytes: Vec<u8>, records: &mut models::StationRecords) {
     let mut buffer = Cursor::new(bytes.as_slice());
-    
+
     while let Some(name) = parse_name(&mut buffer).await {
         let value = parse_value(&mut buffer).await;
 
@@ -39,15 +39,15 @@ pub async fn parse_name(buffer: &mut Cursor<&[u8]>) -> Option<Vec<u8>> {
         match buffer.read_u8().await {
             Ok(b';') => {
                 break;
-            },
+            }
             Ok(ascii) => {
                 name.push(ascii);
-            },
+            }
             Err(_err) => {
-                #[cfg(feature="debug")]
+                #[cfg(feature = "debug")]
                 println!("parse_name() read_u8() error: {}", _err);
 
-                return None
+                return None;
             }
         }
     }
@@ -64,8 +64,7 @@ pub async fn parse_name(buffer: &mut Cursor<&[u8]>) -> Option<Vec<u8>> {
 /// for example, 123.4 will be returned as 1234.
 ///
 /// If the value contains more than 1 decimal point, the behavior is undefined.
-pub async fn parse_value<'a>(buffer: &mut Cursor<&[u8]>) -> i16
-{
+pub async fn parse_value<'a>(buffer: &mut Cursor<&[u8]>) -> i16 {
     let mut multiplier: i16 = 1;
     let mut digits = Vec::with_capacity(4);
 
@@ -75,17 +74,17 @@ pub async fn parse_value<'a>(buffer: &mut Cursor<&[u8]>) -> i16
                 // This does not care if the '-' is in the middle of the number;
                 // this is to safe computation.
                 multiplier = -1;
-            },
+            }
             Ok(b'\n') => {
                 break;
-            },
-            Ok(b'.') => {},
+            }
+            Ok(b'.') => {}
             Ok(ascii) => {
                 // This is safe because we know that the byte is a digit.
                 digits.push(func::u8_to_digit(ascii));
-            },
+            }
             Err(_err) => {
-                #[cfg(feature="debug")]
+                #[cfg(feature = "debug")]
                 println!("parse_value() read_u8() error: {}", _err);
 
                 break;
@@ -94,12 +93,9 @@ pub async fn parse_value<'a>(buffer: &mut Cursor<&[u8]>) -> i16
     }
 
     digits
-    .into_iter()
-    .fold(
-        0,
-        |acc, digit| acc * 10 + digit as i16
-    )
-    * multiplier
+        .into_iter()
+        .fold(0, |acc, digit| acc * 10 + digit as i16)
+        * multiplier
 }
 
 #[cfg(test)]
@@ -167,8 +163,16 @@ mod test {
         (parse_name_name1, "abc;", Some("abc")),
         (parse_name_name2, "10;", Some("10")),
         (parse_name_name3, "hello, world!;", Some("hello, world!")),
-        (parse_name_unterminated, "hello, world!", Option::<&str>::None),
-        (parse_name_trailing_texts, "hello, world!;123.4", Some("hello, world!")),
+        (
+            parse_name_unterminated,
+            "hello, world!",
+            Option::<&str>::None
+        ),
+        (
+            parse_name_trailing_texts,
+            "hello, world!;123.4",
+            Some("hello, world!")
+        ),
         (parse_name_multi_lines, "jack;1.2\njill:3.4", Some("jack")),
     );
 
@@ -196,11 +200,7 @@ mod test {
     }
 
     expand_parse_bytes_tests!(
-        (
-            parse_bytes_single_line,
-            "jack;1.2",
-            ("jack".as_bytes(), 12)
-        ),
+        (parse_bytes_single_line, "jack;1.2", ("jack".as_bytes(), 12)),
         (
             parse_bytes_single_line_with_newline,
             "jack;1.2\n",

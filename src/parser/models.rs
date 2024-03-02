@@ -1,9 +1,6 @@
 //! Definitions of type aliases.
 
-use std::{
-    collections::BTreeSet,
-    path::Path,
-};
+use std::{collections::BTreeSet, path::Path};
 
 use tokio::{fs::File, io::AsyncWriteExt};
 
@@ -119,8 +116,11 @@ impl Default for StationRecords {
     fn default() -> Self {
         Self {
             names: BTreeSet::new(),
-            // The actual number of stations is 
-            stats: gxhash::GxHashMap::with_capacity_and_hasher(500, gxhash::GxBuildHasher::default()),
+            // The actual number of stations is
+            stats: gxhash::GxHashMap::with_capacity_and_hasher(
+                500,
+                gxhash::GxBuildHasher::default(),
+            ),
         }
     }
 }
@@ -132,19 +132,18 @@ impl StationRecords {
     }
 
     /// Insert a new record by mutating the [`StationRecords`] in place.
-    pub fn insert(
-        &mut self,
-        name: Vec<u8>,
-        value: i16,
-    ) {
+    pub fn insert(&mut self, name: Vec<u8>, value: i16) {
         // Since we hold a mutable reference, this is essentially a mutex around both fields.
         self.names.insert(name.clone());
-        self.stats.entry(name).and_modify(|stats| stats.extend(value)).or_insert(StationStats {
-            min: value,
-            max: value,
-            sum: value as i32,
-            count: 1,
-        });
+        self.stats
+            .entry(name)
+            .and_modify(|stats| stats.extend(value))
+            .or_insert(StationStats {
+                min: value,
+                max: value,
+                sum: value as i32,
+                count: 1,
+            });
     }
 
     /// Get the stats of a single station.
@@ -162,22 +161,17 @@ impl StationRecords {
 
     /// Export the results to a text in the 1BRC format.
     #[allow(dead_code)]
-    pub fn to_text(&self) -> String {
+    pub fn export_text(&self) -> String {
         "{".to_owned()
-        + &itertools::join(
-            self.iter().map(
-                |(name, stats)| stats.to_text(name)
-            ),
-            ", "
-        )
-        + "}"
+            + &itertools::join(self.iter().map(|(name, stats)| stats.to_text(name)), ", ")
+            + "}"
     }
 
     /// Export the results to a file in the 1BRC format.
-    pub async fn to_file(&self, path: impl AsRef<Path>) {
+    pub async fn export_file(&self, path: impl AsRef<Path>) {
         let mut file = File::create(path).await.unwrap();
 
-        file.write(self.to_text().as_bytes()).await.unwrap();
+        file.write_all(self.export_text().as_bytes()).await.unwrap();
     }
 
     /// The main asynchronous function to read from a [`RowsReader`] and parse the data into itself.
@@ -185,13 +179,16 @@ impl StationRecords {
         let mut records = Self::new();
 
         while let Some(buffer) = reader.pop().await {
-            #[cfg(feature="debug")]
-            println!("read_from_reader() found {len} bytes of data.", len=buffer.len());
+            #[cfg(feature = "debug")]
+            println!(
+                "read_from_reader() found {len} bytes of data.",
+                len = buffer.len()
+            );
 
             line::parse_bytes(buffer, &mut records).await;
         }
 
-        #[cfg(feature="debug")]
+        #[cfg(feature = "debug")]
         println!("read_from_reader() finished.");
 
         records
@@ -204,14 +201,12 @@ impl std::ops::AddAssign for StationRecords {
 
         self.names.iter().for_each(|name| {
             self.stats
-            .entry(name.clone())
-            .and_modify(|stats| {
-                *stats += rhs.stats.remove(name)
-            })
-            .or_insert_with(
-                // This is safe because we know that the name exists in either BTreeSet.
-                || rhs.stats.remove(name).unwrap()
-            );
+                .entry(name.clone())
+                .and_modify(|stats| *stats += rhs.stats.remove(name))
+                .or_insert_with(
+                    // This is safe because we know that the name exists in either BTreeSet.
+                    || rhs.stats.remove(name).unwrap(),
+                );
         });
     }
 }
@@ -231,7 +226,6 @@ impl std::iter::Sum for StationRecords {
     }
 }
 
-
 /// An iterator over the records of a [`StationRecords`].
 pub struct IterStationRecords<'a> {
     iter: std::collections::btree_set::Iter<'a, Vec<u8>>,
@@ -242,7 +236,9 @@ impl<'a> std::iter::Iterator for IterStationRecords<'a> {
     type Item = (&'a [u8], &'a StationStats);
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(|name| (name.as_slice(), self.records.get(name).unwrap()))
+        self.iter
+            .next()
+            .map(|name| (name.as_slice(), self.records.get(name).unwrap()))
     }
 }
 
@@ -279,9 +275,9 @@ mod test {
         stats.extend(50);
         stats.extend(30);
 
-        assert_eq!(&stats.to_text(&(b"station1".to_vec())), "station1=1.0/3.5/6.0");
+        assert_eq!(&stats.to_text(b"station1".as_ref()), "station1=1.0/3.5/6.0");
     }
-    
+
     #[test]
     fn station_records_insert() {
         let mut records = StationRecords::new();
@@ -351,11 +347,26 @@ mod test {
 
         let mut iter = records.iter();
 
-        assert_eq!(iter.next(), Some((&b"bar"[..], records.get(b"bar").unwrap())));
-        assert_eq!(iter.next(), Some((&b"baz"[..], records.get(b"baz").unwrap())));
-        assert_eq!(iter.next(), Some((&b"foo"[..], records.get(b"foo").unwrap())));
-        assert_eq!(iter.next(), Some((&b"that"[..], records.get(b"that").unwrap())));
-        assert_eq!(iter.next(), Some((&b"this"[..], records.get(b"this").unwrap())));
+        assert_eq!(
+            iter.next(),
+            Some((&b"bar"[..], records.get(b"bar").unwrap()))
+        );
+        assert_eq!(
+            iter.next(),
+            Some((&b"baz"[..], records.get(b"baz").unwrap()))
+        );
+        assert_eq!(
+            iter.next(),
+            Some((&b"foo"[..], records.get(b"foo").unwrap()))
+        );
+        assert_eq!(
+            iter.next(),
+            Some((&b"that"[..], records.get(b"that").unwrap()))
+        );
+        assert_eq!(
+            iter.next(),
+            Some((&b"this"[..], records.get(b"this").unwrap()))
+        );
         assert_eq!(iter.next(), None);
     }
 
@@ -369,7 +380,7 @@ mod test {
         records.insert(b"baz".to_vec(), 3);
 
         assert_eq!(
-            records.to_text(),
+            records.export_text(),
             "{bar=0.2/0.2/0.2, baz=0.3/0.3/0.3, foo=0.1/0.1/0.1, that=0.5/0.5/0.5, this=0.4/0.4/0.4}"
         );
     }

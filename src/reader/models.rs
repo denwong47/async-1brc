@@ -1,12 +1,12 @@
 //! The reader model.
 
+use deadqueue::unlimited::Queue;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use tokio::{
     fs::File,
     io::{AsyncBufReadExt, AsyncReadExt, BufReader},
     sync::watch,
 };
-use std::sync::atomic::{AtomicUsize, AtomicBool, Ordering};
-use deadqueue::unlimited::Queue;
 
 use super::super::config;
 use super::func;
@@ -36,10 +36,7 @@ impl RowsReader {
     }
 
     /// Create a new instance with custom chunk sizes.
-    pub fn with_chunk_sizes(
-        chunk_size: usize,
-        max_chunk_size: usize,
-    ) -> Self {
+    pub fn with_chunk_sizes(chunk_size: usize, max_chunk_size: usize) -> Self {
         let (closed, _) = watch::channel(false);
 
         Self {
@@ -59,7 +56,7 @@ impl RowsReader {
 
     /// Increment the in_queue counter.
     fn in_queue_increment(&self) -> usize {
-        #[cfg(feature="debug")]
+        #[cfg(feature = "debug")]
         println!("RowsReader: in_queue_increment() incremented in_queue.");
 
         self.in_queue.fetch_add(1, Ordering::Relaxed) + 1
@@ -67,7 +64,7 @@ impl RowsReader {
 
     /// Decrement the in_queue counter.
     fn in_queue_decrement(&self) -> usize {
-        #[cfg(feature="debug")]
+        #[cfg(feature = "debug")]
         println!("RowsReader: in_queue_decrement() decremented in_queue.");
 
         self.in_queue.fetch_sub(1, Ordering::Relaxed) - 1
@@ -105,47 +102,51 @@ impl RowsReader {
     }
 
     /// Read the file and push the chunks to the queue.
-    pub async fn read(
-        &self,
-        path: impl AsRef<std::path::Path>,
-    ) {
-        if self.in_progress.compare_exchange(false, true, Ordering::Relaxed, Ordering::Relaxed).is_err() {
-            panic!("RowsReader is already in progress! Do not call read() twice on the same instance.")
+    pub async fn read(&self, path: impl AsRef<std::path::Path>) {
+        if self
+            .in_progress
+            .compare_exchange(false, true, Ordering::Relaxed, Ordering::Relaxed)
+            .is_err()
+        {
+            panic!(
+                "RowsReader is already in progress! Do not call read() twice on the same instance."
+            )
         }
 
         let file = File::open(path).await.unwrap();
         let mut reader: BufReader<File> = BufReader::with_capacity(self.chunk_size, file);
         let mut buffer_read = vec![0; self.chunk_size];
         let mut buffer_export = Vec::<u8>::with_capacity(self.max_chunk_size);
-        
+
         let mut buffer_line = Vec::<u8>::with_capacity(config::MAX_LINE_LENGTH);
-        
+
         loop {
             let bytes_read = reader.read(&mut buffer_read).await.unwrap();
- 
-            #[cfg(feature="debug")]
+
+            #[cfg(feature = "debug")]
             println!("RowsReader: read() read {bytes_read} bytes.");
 
             func::clone_buffer(&mut buffer_read[..bytes_read], &mut buffer_export);
 
             if bytes_read == 0 // if nothing is read
                 || func::buffer_full(&buffer_export, self.chunk_size) // if the buffer is full
-                || self.in_queue.load(Ordering::Relaxed) > 0 // if something is waiting
+                || self.in_queue.load(Ordering::Relaxed) > 0
+            // if something is waiting
             {
                 // Read until the end of line anyway
-                let bytes_read = reader.read_until('\n' as u8, &mut buffer_line).await.unwrap();
+                let bytes_read = reader.read_until(b'\n', &mut buffer_line).await.unwrap();
 
-                #[cfg(feature="debug")]
+                #[cfg(feature = "debug")]
                 println!("RowsReader: read() read {bytes_read} bytes up to a new line.");
 
                 func::transfer_buffer(&mut buffer_line, &mut buffer_export);
                 let _bytes_pushed = func::push_buffer(&mut buffer_export, &self.queue);
 
-                #[cfg(feature="debug")]
+                #[cfg(feature = "debug")]
                 println!("RowsReader: read() flushed {_bytes_pushed} bytes to queue.");
 
                 if bytes_read == 0 {
-                    #[cfg(feature="debug")]
+                    #[cfg(feature = "debug")]
                     println!("RowsReader: read() finished.");
 
                     self.closed.send_replace(true);

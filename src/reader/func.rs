@@ -5,18 +5,12 @@ use super::super::config;
 /// Transfer the buffer from the read buffer to the export buffer.
 ///
 /// This will leave the read buffer empty.
-pub fn transfer_buffer(
-    buffer_read: &mut Vec<u8>,
-    buffer_export: &mut Vec<u8>,
-) {
+pub fn transfer_buffer(buffer_read: &mut Vec<u8>, buffer_export: &mut Vec<u8>) {
     buffer_export.append(buffer_read);
 }
 
 /// Shift the buffer from the read buffer to the export buffer.
-pub fn clone_buffer(
-    buffer_read: &mut [u8],
-    buffer_export: &mut Vec<u8>,
-) {
+pub fn clone_buffer(buffer_read: &mut [u8], buffer_export: &mut Vec<u8>) {
     buffer_export.extend_from_slice(buffer_read);
 }
 
@@ -25,27 +19,25 @@ pub fn push_buffer(
     buffer_export: &mut Vec<u8>,
     queue: &deadqueue::unlimited::Queue<Vec<u8>>,
 ) -> usize {
-    if buffer_export.len() > 0 {
+    if !buffer_export.is_empty() {
         let mut buffer_new = Vec::<u8>::with_capacity(buffer_export.capacity());
         std::mem::swap(&mut buffer_new, buffer_export);
         let len = buffer_new.len();
         queue.push(buffer_new);
         len
     } else {
-        #[cfg(feature="debug")]
+        #[cfg(feature = "debug")]
         println!("RowsReader: push_buffer() skipped empty buffer.");
         0
     }
 }
 
 /// Check if the buffer is full.
-pub fn buffer_full(
-    buffer_export: &Vec<u8>,
-    chunk_size: usize,
-) -> bool {
-    let _result = buffer_export.len() >= buffer_export.capacity() - chunk_size - config::MAX_LINE_LENGTH;
+pub fn buffer_full(buffer_export: &Vec<u8>, chunk_size: usize) -> bool {
+    let _result =
+        buffer_export.len() >= buffer_export.capacity() - chunk_size - config::MAX_LINE_LENGTH;
 
-    #[cfg(feature="debug")]
+    #[cfg(feature = "debug")]
     if _result {
         println!("RowsReader: buffer_full() buffer full: {}", _result);
     }
