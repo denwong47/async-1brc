@@ -1,7 +1,8 @@
 //! Definitions of type aliases.
 
-use std::{collections::BTreeSet, path::Path};
+use std::path::Path;
 
+use itertools::Itertools;
 use tokio::{fs::File, io::AsyncWriteExt};
 
 use super::{func, line};
@@ -53,7 +54,7 @@ impl StationStats {
     }
 
     /// Export the stats to a 1BRC format string.
-    pub fn to_text(&self, name: &[u8]) -> String {
+    pub fn export_text(&self, name: &[u8]) -> String {
         format!(
             "{name}={min:.1}/{avg:.1}/{max:.1}",
             name = func::bytes_to_string(name),
@@ -103,20 +104,18 @@ impl std::ops::AddAssign<Option<Self>> for StationStats {
 }
 
 /// Records of multiple stations.
-/// This internally uses a BTreeSet to keep the names sorted,
-/// and a HashMap to keep the stats.
-/// This allows for O(1) lookup for the stats, and a O(1) retrieval of the ordered names.
+/// This internally uses a HashMap to keep the stats.
+/// This used to have a BTreeSet to keep the names in order, but it was removed for
+/// performance reasons.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StationRecords {
-    names: BTreeSet<Vec<u8>>,
     stats: gxhash::GxHashMap<Vec<u8>, StationStats>,
 }
 
 impl Default for StationRecords {
     fn default() -> Self {
         Self {
-            names: BTreeSet::new(),
-            // The actual number of stations is
+            // The actual number of stations is 400-ish.
             stats: gxhash::GxHashMap::with_capacity_and_hasher(
                 500,
                 gxhash::GxBuildHasher::default(),
@@ -134,7 +133,6 @@ impl StationRecords {
     /// Insert a new record by mutating the [`StationRecords`] in place.
     pub fn insert(&mut self, name: Vec<u8>, value: i16) {
         // Since we hold a mutable reference, this is essentially a mutex around both fields.
-        self.names.insert(name.clone());
         self.stats
             .entry(name)
             .and_modify(|stats| stats.extend(value))
@@ -151,10 +149,30 @@ impl StationRecords {
         self.stats.get(name)
     }
 
-    /// Iterate through the records in an alphabetical order of the station names.
-    pub fn iter(&self) -> IterStationRecords {
+    /// Calculate the length of the records.
+    #[cfg(feature = "assert")]
+    pub fn len(&self) -> usize {
+        self.stats.values().map(|stats| stats.count).sum()
+    }
+
+    /// Iterate through the records in an arbitrary order.
+    #[allow(dead_code)]
+    pub fn iter(
+        &self,
+    ) -> IterStationRecords<std::collections::hash_map::Keys<Vec<u8>, StationStats>> {
         IterStationRecords {
-            iter: self.names.iter(),
+            iter: self.stats.keys(),
+            records: self,
+        }
+    }
+
+    /// Iterate through the records in an alphabetical order of the station names.
+    pub fn iter_sorted(&self) -> IterStationRecords<std::vec::IntoIter<&Vec<u8>>> {
+        let mut names = self.stats.keys().collect_vec();
+        names.sort();
+
+        IterStationRecords {
+            iter: names.into_iter(),
             records: self,
         }
     }
@@ -163,8 +181,12 @@ impl StationRecords {
     #[allow(dead_code)]
     pub fn export_text(&self) -> String {
         "{".to_owned()
-            + &itertools::join(self.iter().map(|(name, stats)| stats.to_text(name)), ", ")
-            + "}"
+            + &itertools::join(
+                self.iter_sorted()
+                    .map(|(name, stats)| stats.export_text(name)),
+                ", ",
+            )
+            + "}\n"
     }
 
     /// Export the results to a file in the 1BRC format.
@@ -197,15 +219,13 @@ impl StationRecords {
 
 impl std::ops::AddAssign for StationRecords {
     fn add_assign(&mut self, mut rhs: Self) {
-        self.names.append(&mut rhs.names);
-
-        self.names.iter().for_each(|name| {
+        rhs.stats.drain().for_each(|(name, rhs_stats)| {
             self.stats
                 .entry(name.clone())
-                .and_modify(|stats| *stats += rhs.stats.remove(name))
+                .and_modify(|lhs_stats| *lhs_stats += rhs_stats)
                 .or_insert_with(
                     // This is safe because we know that the name exists in either BTreeSet.
-                    || rhs.stats.remove(name).unwrap(),
+                    || rhs_stats,
                 );
         });
     }
@@ -227,12 +247,18 @@ impl std::iter::Sum for StationRecords {
 }
 
 /// An iterator over the records of a [`StationRecords`].
-pub struct IterStationRecords<'a> {
-    iter: std::collections::btree_set::Iter<'a, Vec<u8>>,
+pub struct IterStationRecords<'a, T>
+where
+    T: Iterator<Item = &'a Vec<u8>>,
+{
+    iter: T,
     records: &'a StationRecords,
 }
 
-impl<'a> std::iter::Iterator for IterStationRecords<'a> {
+impl<'a, T> std::iter::Iterator for IterStationRecords<'a, T>
+where
+    T: Iterator<Item = &'a Vec<u8>>,
+{
     type Item = (&'a [u8], &'a StationStats);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -275,7 +301,10 @@ mod test {
         stats.extend(50);
         stats.extend(30);
 
-        assert_eq!(&stats.to_text(b"station1".as_ref()), "station1=1.0/3.5/6.0");
+        assert_eq!(
+            &stats.export_text(b"station1".as_ref()),
+            "station1=1.0/3.5/6.0"
+        );
     }
 
     #[test]
@@ -345,7 +374,7 @@ mod test {
         records.insert(b"bar".to_vec(), 2);
         records.insert(b"baz".to_vec(), 3);
 
-        let mut iter = records.iter();
+        let mut iter = records.iter_sorted();
 
         assert_eq!(
             iter.next(),
