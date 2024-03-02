@@ -1,13 +1,14 @@
-mod config;
-mod parser;
-mod reader;
 use std::sync::Arc;
-
-#[cfg(feature = "bench")]
 use tokio::time::Instant;
 
 #[cfg(feature = "assert")]
-mod assertion;
+use async_1brc::assertion;
+
+use async_1brc::{
+    config,
+    parser,
+    reader,
+};
 
 #[tokio::main]
 async fn main() {
@@ -31,6 +32,22 @@ async fn main() {
 
     #[cfg(feature = "bench")]
     println!("Elapsed time: {:?}", start.elapsed());
+
+    #[cfg(feature = "timed")]
+    '_timed: {
+        println!("Reporting the total time spent in the operations...");
+        if let Some(ops) = reader::READER_READ_TIMED.get() { ops.report() }
+        if let Some(ops) = reader::READER_LINE_TIMED.get() { ops.report() }
+        if let Some(ops) = reader::READER_LOCK_TIMED.get() { ops.report() }
+        if let Some(ops) = reader::func::CLONE_BUFFER_TIMED.get() { ops.report() }
+        if let Some(ops) = reader::func::MEM_SWAP_TIMED.get() { ops.report() }
+        #[cfg(feature = "timed-extreme")]
+        {
+            parser::line::PARSE_NAME_TIMED.get().map(|ops| ops.report());
+            parser::line::PARSE_VALUE_TIMED.get().map(|ops| ops.report());
+            parser::models::HASH_INSERT_TIMED.get().map(|ops| ops.report());
+        }
+    }
 
     #[cfg(feature = "assert")]
     '_assertion: {

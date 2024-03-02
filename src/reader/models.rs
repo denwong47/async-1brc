@@ -11,6 +11,18 @@ use tokio::{
 use super::super::config;
 use super::func;
 
+#[cfg(feature = "timed")]
+use super::super::timed::TimedOperation;
+
+#[cfg(feature = "timed")]
+pub static READER_LOCK_TIMED: std::sync::OnceLock<std::sync::Arc<TimedOperation>> = std::sync::OnceLock::new();
+
+#[cfg(feature = "timed")]
+pub static READER_READ_TIMED: std::sync::OnceLock<std::sync::Arc<TimedOperation>> = std::sync::OnceLock::new();
+
+#[cfg(feature = "timed")]
+pub static READER_LINE_TIMED: std::sync::OnceLock<std::sync::Arc<TimedOperation>> = std::sync::OnceLock::new();
+
 pub struct RowsReader {
     queue: Queue<Vec<u8>>,
     chunk_size: usize,
@@ -21,6 +33,12 @@ pub struct RowsReader {
 }
 
 #[allow(dead_code)]
+impl Default for RowsReader {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RowsReader {
     pub fn new() -> Self {
         let (closed, _) = watch::channel(false);
@@ -89,7 +107,11 @@ impl RowsReader {
 
     /// Pop the next buffer from the queue.
     pub async fn pop(&self) -> Option<Vec<u8>> {
+        #[cfg(feature = "timed")]
+        let _counter = READER_LOCK_TIMED.get_or_init(|| TimedOperation::new("RowsReader::pop()")).start();
+
         self.in_queue_increment();
+
         let result = tokio::select! {
             _ = self.closed() => None,
             bytes = self.queue.pop() => {
@@ -121,8 +143,13 @@ impl RowsReader {
         let mut buffer_line = Vec::<u8>::with_capacity(config::MAX_LINE_LENGTH);
 
         loop {
-            let bytes_read = reader.read(&mut buffer_read).await.unwrap();
-
+            let bytes_read = {
+                #[cfg(feature = "timed")]
+                let _counter = READER_READ_TIMED.get_or_init(|| TimedOperation::new("RowsReader::read()[fixed length]")).start();
+    
+                reader.read(&mut buffer_read).await.unwrap()
+            };
+            
             #[cfg(feature = "debug")]
             println!("RowsReader: read() read {bytes_read} bytes.");
 
@@ -134,7 +161,12 @@ impl RowsReader {
             // if something is waiting
             {
                 // Read until the end of line anyway
-                let bytes_read = reader.read_until(b'\n', &mut buffer_line).await.unwrap();
+                let bytes_read = {
+                    #[cfg(feature = "timed")]
+                    let _counter = READER_LINE_TIMED.get_or_init(|| TimedOperation::new("RowsReader::read()[line]")).start();
+
+                    reader.read_until(b'\n', &mut buffer_line).await.unwrap()
+                };
 
                 #[cfg(feature = "debug")]
                 println!("RowsReader: read() read {bytes_read} bytes up to a new line.");

@@ -7,6 +7,15 @@ use tokio::io::AsyncReadExt;
 use super::super::config;
 use super::{func, models};
 
+#[cfg(feature = "timed-extreme")]
+use super::super::timed::TimedOperation;
+
+#[cfg(feature = "timed-extreme")]
+pub static PARSE_NAME_TIMED: std::sync::OnceLock<std::sync::Arc<TimedOperation>> = std::sync::OnceLock::new();
+
+#[cfg(feature = "timed-extreme")]
+pub static PARSE_VALUE_TIMED: std::sync::OnceLock<std::sync::Arc<TimedOperation>> = std::sync::OnceLock::new();
+
 /// Parse bytes into a [`models::StationRecords`].
 ///
 /// This will parse the bytes into an existing [`models::StationRecords`], potentially local
@@ -34,6 +43,9 @@ pub async fn parse_bytes(bytes: Vec<u8>, records: &mut models::StationRecords) {
 /// the behavior is undefined.
 pub async fn parse_name(buffer: &mut Cursor<&[u8]>) -> Option<Vec<u8>> {
     let mut name = Vec::with_capacity(config::MAX_LINE_LENGTH);
+
+    #[cfg(feature = "timed-extreme")]
+    let _counter = PARSE_NAME_TIMED.get_or_init(|| TimedOperation::new("parse_name()")).start();
 
     loop {
         match buffer.read_u8().await {
@@ -67,6 +79,9 @@ pub async fn parse_name(buffer: &mut Cursor<&[u8]>) -> Option<Vec<u8>> {
 pub async fn parse_value<'a>(buffer: &mut Cursor<&[u8]>) -> i16 {
     let mut multiplier: i16 = 1;
     let mut digits = Vec::with_capacity(4);
+
+    #[cfg(feature = "timed-extreme")]
+    let _counter = PARSE_VALUE_TIMED.get_or_init(|| TimedOperation::new("parse_value()")).start();
 
     loop {
         match buffer.read_u8().await {

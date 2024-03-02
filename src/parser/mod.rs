@@ -2,7 +2,7 @@
 
 pub mod func;
 
-mod line;
+pub mod line;
 
 pub mod models;
 

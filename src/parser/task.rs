@@ -4,6 +4,7 @@ use super::super::reader::RowsReader;
 use super::models::StationRecords;
 use std::sync::Arc;
 
+
 /// Create X number of concurrent consumers to read from the same [`RowsReader`].
 pub async fn read_from_reader(reader: Arc<RowsReader>, threads: usize) -> StationRecords {
     // If there is only one thread, we can just read from the reader directly.

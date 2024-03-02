@@ -3,6 +3,13 @@ name = "async-1brc"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+bench = false
+
+[[bin]]
+name = "main"
+test = true
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -12,7 +19,8 @@ itertools = "0.12.1"
 tokio = { version = "1.36.0", features = ["rt-multi-thread", "io-std", "macros", "sync", "io-util", "fs", "time"] }
 
 [features]
-debug = ["tokio/time"]
-bench = ["tokio/time"]
-# io_only = ["tokio/time"]
+debug = []
+bench = []
 assert = []
+timed = []
+timed-extreme = ["timed"] # this has a real performance impact

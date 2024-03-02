@@ -9,6 +9,13 @@ use super::{func, line};
 
 use crate::reader::RowsReader;
 
+#[cfg(feature = "timed")]
+use super::super::timed::TimedOperation;
+
+#[cfg(feature = "timed-extreme")]
+pub static HASH_INSERT_TIMED: std::sync::OnceLock<std::sync::Arc<TimedOperation>> = std::sync::OnceLock::new();
+
+
 /// Statistics of a single station.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StationStats {
@@ -132,6 +139,9 @@ impl StationRecords {
 
     /// Insert a new record by mutating the [`StationRecords`] in place.
     pub fn insert(&mut self, name: Vec<u8>, value: i16) {
+        #[cfg(feature = "timed-extreme")]
+        let _counter = HASH_INSERT_TIMED.get_or_init(|| TimedOperation::new("StationRecords::insert()")).start();
+
         // Since we hold a mutable reference, this is essentially a mutex around both fields.
         self.stats
             .entry(name)
@@ -191,6 +201,11 @@ impl StationRecords {
 
     /// Export the results to a file in the 1BRC format.
     pub async fn export_file(&self, path: impl AsRef<Path>) {
+        #[cfg(feature = "timed")]
+        let _ops = TimedOperation::new("StationRecords::export_file()");
+        #[cfg(feature = "timed")]
+        let _counter = _ops.start();
+
         let mut file = File::create(path).await.unwrap();
 
         file.write_all(self.export_text().as_bytes()).await.unwrap();
@@ -410,7 +425,7 @@ mod test {
 
         assert_eq!(
             records.export_text(),
-            "{bar=0.2/0.2/0.2, baz=0.3/0.3/0.3, foo=0.1/0.1/0.1, that=0.5/0.5/0.5, this=0.4/0.4/0.4}"
+            "{bar=0.2/0.2/0.2, baz=0.3/0.3/0.3, foo=0.1/0.1/0.1, that=0.5/0.5/0.5, this=0.4/0.4/0.4}\n"
         );
     }
 }
