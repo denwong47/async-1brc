@@ -1,18 +1,14 @@
-//! A timed 
+//! A timed
 
 use std::sync::{
-    Arc, 
-    atomic::{
-        AtomicUsize,
-        AtomicU64,
-        Ordering,
-    }
+    atomic::{AtomicU64, AtomicUsize, Ordering},
+    Arc,
 };
 use tokio::time::Instant;
 
 /// An operation that needs to be timed.
 ///
-/// This struct is used to measure the time spent in a particular operation, 
+/// This struct is used to measure the time spent in a particular operation,
 /// and the number of times it has been called. This can be used in multiple
 /// concurrent threads, and the results will be the cumulative wall time spent.
 ///
@@ -45,7 +41,7 @@ use tokio::time::Instant;
 /// use std::sync::Arc;
 /// use async_1brc::timed::TimedOperation;
 /// use tokio::time::{sleep, Duration};
-/// 
+///
 /// #[tokio::main]
 /// async fn main() {
 ///     let op = TimedOperation::new("test");
@@ -102,7 +98,7 @@ impl TimedOperation {
     }
 
     /// Get the total time spent in the operation.
-    /// 
+    ///
     /// This does not include the time spent in any active counters.
     pub fn ns(&self) -> u64 {
         self.ns.load(Ordering::Relaxed)
@@ -128,7 +124,10 @@ impl TimedOperation {
         let duration = self.duration();
         let count = self.count();
         let max = self.max();
-        println!("{} has had {} calls, totalling {:?}, with a maximum of {:?}.", self.name, count, duration, max);
+        println!(
+            "{} has had {} calls, totalling {:?}, with a maximum of {:?}.",
+            self.name, count, duration, max
+        );
     }
 }
 
@@ -190,21 +189,19 @@ mod test {
         assert_eq!(op.count(), REPEAT as usize);
         assert!(op.ns() >= 100 * REPEAT);
     }
-    
+
     #[tokio::test]
     async fn concurrent_calls() {
         let op = TimedOperation::new("test");
 
         const REPEAT: u64 = 5;
-        let handles = (0..REPEAT).map(
-                |_| {
-                let op = Arc::clone(&op);
-                tokio::spawn(async move {
-                    let _counter = op.start();
-                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-                })
-            }
-        );
+        let handles = (0..REPEAT).map(|_| {
+            let op = Arc::clone(&op);
+            tokio::spawn(async move {
+                let _counter = op.start();
+                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+            })
+        });
 
         for handle in handles {
             handle.await.unwrap();

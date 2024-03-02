@@ -6,11 +6,7 @@ use tokio::time::Instant;
 #[cfg(feature = "assert")]
 use async_1brc::assertion;
 
-use async_1brc::{
-    config,
-    parser,
-    reader,
-};
+use async_1brc::{config, parser, reader};
 
 #[tokio::main]
 async fn main() {
@@ -38,16 +34,30 @@ async fn main() {
     #[cfg(feature = "timed")]
     '_timed: {
         println!("Reporting the total time spent in the operations...");
-        if let Some(ops) = reader::READER_READ_TIMED.get() { ops.report() }
-        if let Some(ops) = reader::READER_LINE_TIMED.get() { ops.report() }
-        if let Some(ops) = reader::READER_LOCK_TIMED.get() { ops.report() }
-        if let Some(ops) = reader::func::CLONE_BUFFER_TIMED.get() { ops.report() }
-        if let Some(ops) = reader::func::MEM_SWAP_TIMED.get() { ops.report() }
+        if let Some(ops) = reader::READER_READ_TIMED.get() {
+            ops.report()
+        }
+        if let Some(ops) = reader::READER_LINE_TIMED.get() {
+            ops.report()
+        }
+        if let Some(ops) = reader::READER_LOCK_TIMED.get() {
+            ops.report()
+        }
+        if let Some(ops) = reader::func::CLONE_BUFFER_TIMED.get() {
+            ops.report()
+        }
+        if let Some(ops) = reader::func::MEM_SWAP_TIMED.get() {
+            ops.report()
+        }
         #[cfg(feature = "timed-extreme")]
         {
             parser::line::PARSE_NAME_TIMED.get().map(|ops| ops.report());
-            parser::line::PARSE_VALUE_TIMED.get().map(|ops| ops.report());
-            parser::models::HASH_INSERT_TIMED.get().map(|ops| ops.report());
+            parser::line::PARSE_VALUE_TIMED
+                .get()
+                .map(|ops| ops.report());
+            parser::models::HASH_INSERT_TIMED
+                .get()
+                .map(|ops| ops.report());
         }
     }
 

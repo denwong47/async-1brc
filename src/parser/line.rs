@@ -11,10 +11,12 @@ use super::{func, models};
 use super::super::timed::TimedOperation;
 
 #[cfg(feature = "timed-extreme")]
-pub static PARSE_NAME_TIMED: std::sync::OnceLock<std::sync::Arc<TimedOperation>> = std::sync::OnceLock::new();
+pub static PARSE_NAME_TIMED: std::sync::OnceLock<std::sync::Arc<TimedOperation>> =
+    std::sync::OnceLock::new();
 
 #[cfg(feature = "timed-extreme")]
-pub static PARSE_VALUE_TIMED: std::sync::OnceLock<std::sync::Arc<TimedOperation>> = std::sync::OnceLock::new();
+pub static PARSE_VALUE_TIMED: std::sync::OnceLock<std::sync::Arc<TimedOperation>> =
+    std::sync::OnceLock::new();
 
 /// Parse bytes into a [`models::StationRecords`].
 ///
@@ -45,7 +47,9 @@ pub async fn parse_name(buffer: &mut Cursor<&[u8]>) -> Option<Vec<u8>> {
     let mut name = Vec::with_capacity(config::MAX_LINE_LENGTH);
 
     #[cfg(feature = "timed-extreme")]
-    let _counter = PARSE_NAME_TIMED.get_or_init(|| TimedOperation::new("parse_name()")).start();
+    let _counter = PARSE_NAME_TIMED
+        .get_or_init(|| TimedOperation::new("parse_name()"))
+        .start();
 
     loop {
         match buffer.read_u8().await {
@@ -81,7 +85,9 @@ pub async fn parse_value<'a>(buffer: &mut Cursor<&[u8]>) -> i16 {
     let mut digits = Vec::with_capacity(4);
 
     #[cfg(feature = "timed-extreme")]
-    let _counter = PARSE_VALUE_TIMED.get_or_init(|| TimedOperation::new("parse_value()")).start();
+    let _counter = PARSE_VALUE_TIMED
+        .get_or_init(|| TimedOperation::new("parse_value()"))
+        .start();
 
     loop {
         match buffer.read_u8().await {

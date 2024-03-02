@@ -13,8 +13,8 @@ use crate::reader::RowsReader;
 use super::super::timed::TimedOperation;
 
 #[cfg(feature = "timed-extreme")]
-pub static HASH_INSERT_TIMED: std::sync::OnceLock<std::sync::Arc<TimedOperation>> = std::sync::OnceLock::new();
-
+pub static HASH_INSERT_TIMED: std::sync::OnceLock<std::sync::Arc<TimedOperation>> =
+    std::sync::OnceLock::new();
 
 /// Statistics of a single station.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -140,7 +140,9 @@ impl StationRecords {
     /// Insert a new record by mutating the [`StationRecords`] in place.
     pub fn insert(&mut self, name: Vec<u8>, value: i16) {
         #[cfg(feature = "timed-extreme")]
-        let _counter = HASH_INSERT_TIMED.get_or_init(|| TimedOperation::new("StationRecords::insert()")).start();
+        let _counter = HASH_INSERT_TIMED
+            .get_or_init(|| TimedOperation::new("StationRecords::insert()"))
+            .start();
 
         // Since we hold a mutable reference, this is essentially a mutex around both fields.
         self.stats
@@ -163,6 +165,12 @@ impl StationRecords {
     #[cfg(feature = "assert")]
     pub fn len(&self) -> usize {
         self.stats.values().map(|stats| stats.count).sum()
+    }
+
+    /// Check if the records are empty.
+    #[cfg(feature = "assert")]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     /// Iterate through the records in an arbitrary order.

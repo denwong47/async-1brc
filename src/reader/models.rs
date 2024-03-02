@@ -15,13 +15,16 @@ use super::func;
 use super::super::timed::TimedOperation;
 
 #[cfg(feature = "timed")]
-pub static READER_LOCK_TIMED: std::sync::OnceLock<std::sync::Arc<TimedOperation>> = std::sync::OnceLock::new();
+pub static READER_LOCK_TIMED: std::sync::OnceLock<std::sync::Arc<TimedOperation>> =
+    std::sync::OnceLock::new();
 
 #[cfg(feature = "timed")]
-pub static READER_READ_TIMED: std::sync::OnceLock<std::sync::Arc<TimedOperation>> = std::sync::OnceLock::new();
+pub static READER_READ_TIMED: std::sync::OnceLock<std::sync::Arc<TimedOperation>> =
+    std::sync::OnceLock::new();
 
 #[cfg(feature = "timed")]
-pub static READER_LINE_TIMED: std::sync::OnceLock<std::sync::Arc<TimedOperation>> = std::sync::OnceLock::new();
+pub static READER_LINE_TIMED: std::sync::OnceLock<std::sync::Arc<TimedOperation>> =
+    std::sync::OnceLock::new();
 
 pub struct RowsReader {
     queue: Queue<Vec<u8>>,
@@ -108,7 +111,9 @@ impl RowsReader {
     /// Pop the next buffer from the queue.
     pub async fn pop(&self) -> Option<Vec<u8>> {
         #[cfg(feature = "timed")]
-        let _counter = READER_LOCK_TIMED.get_or_init(|| TimedOperation::new("RowsReader::pop()")).start();
+        let _counter = READER_LOCK_TIMED
+            .get_or_init(|| TimedOperation::new("RowsReader::pop()"))
+            .start();
 
         self.in_queue_increment();
 
@@ -145,11 +150,13 @@ impl RowsReader {
         loop {
             let bytes_read = {
                 #[cfg(feature = "timed")]
-                let _counter = READER_READ_TIMED.get_or_init(|| TimedOperation::new("RowsReader::read()[fixed length]")).start();
-    
+                let _counter = READER_READ_TIMED
+                    .get_or_init(|| TimedOperation::new("RowsReader::read()[fixed length]"))
+                    .start();
+
                 reader.read(&mut buffer_read).await.unwrap()
             };
-            
+
             #[cfg(feature = "debug")]
             println!("RowsReader: read() read {bytes_read} bytes.");
 
@@ -163,7 +170,9 @@ impl RowsReader {
                 // Read until the end of line anyway
                 let bytes_read = {
                     #[cfg(feature = "timed")]
-                    let _counter = READER_LINE_TIMED.get_or_init(|| TimedOperation::new("RowsReader::read()[line]")).start();
+                    let _counter = READER_LINE_TIMED
+                        .get_or_init(|| TimedOperation::new("RowsReader::read()[line]"))
+                        .start();
 
                     reader.read_until(b'\n', &mut buffer_line).await.unwrap()
                 };
