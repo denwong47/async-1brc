@@ -1,4 +1,6 @@
 use std::sync::Arc;
+
+#[cfg(feature = "bench")]
 use tokio::time::Instant;
 
 #[cfg(feature = "assert")]
