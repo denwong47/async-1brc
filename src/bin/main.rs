@@ -22,7 +22,12 @@ async fn main() {
     ));
 
     let (_, records) = tokio::join!(
-        reader.read(config::MEASURMENTS_PATH),
+        async {
+            let file = tokio::fs::File::open(config::MEASURMENTS_PATH).await.unwrap();
+            let buffer = tokio::io::BufReader::with_capacity(config::CHUNK_SIZE, file);
+
+            reader.read(buffer).await
+        },
         parser::task::read_from_reader(Arc::clone(&reader), config::NUMBER_OF_THREADS),
     );
 

@@ -18,7 +18,9 @@ even though it may incur runtime overheads.
 - [x] The program does not need to be error tolerant, i.e. it is allowed to crash on invalid input, but
       it should be capable of reading any number of valid inputs, not hardcoded to exactly 1 billion rows.
 - [x] RAM is not considered free. The program is not allowed to use unreasonable amounts of memory in name
-      of performance.
+      of performance. e.g. reading the file from RAM disk to eliminate I/O performance differences is
+      allowed, but reading the entire file into memory is not, as for in real world applications the file
+      could be of any arbitrary size, exceeding the available memory.
 - [x] The program should be benchmarked on exactly 8 cores, but not hardcoded to such.
 
 ## Setup requirements

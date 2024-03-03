@@ -3,8 +3,7 @@
 use deadqueue::unlimited::Queue;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use tokio::{
-    fs::File,
-    io::{AsyncBufReadExt, AsyncReadExt, BufReader},
+    io::{AsyncBufReadExt, AsyncReadExt, AsyncBufRead},
     sync::watch,
 };
 
@@ -129,7 +128,7 @@ impl RowsReader {
     }
 
     /// Read the file and push the chunks to the queue.
-    pub async fn read(&self, path: impl AsRef<std::path::Path>) {
+    pub async fn read(&self, mut buffer: impl AsyncReadExt + AsyncBufRead + std::marker::Unpin) {
         if self
             .in_progress
             .compare_exchange(false, true, Ordering::Relaxed, Ordering::Relaxed)
@@ -140,8 +139,6 @@ impl RowsReader {
             )
         }
 
-        let file = File::open(path).await.unwrap();
-        let mut reader: BufReader<File> = BufReader::with_capacity(self.chunk_size, file);
         let mut buffer_read = vec![0; self.chunk_size];
         let mut buffer_export = Vec::<u8>::with_capacity(self.max_chunk_size);
 
@@ -154,7 +151,7 @@ impl RowsReader {
                     .get_or_init(|| TimedOperation::new("RowsReader::read()[fixed length]"))
                     .start();
 
-                reader.read(&mut buffer_read).await.unwrap()
+                buffer.read(&mut buffer_read).await.unwrap()
             };
 
             #[cfg(feature = "debug")]
@@ -174,7 +171,7 @@ impl RowsReader {
                         .get_or_init(|| TimedOperation::new("RowsReader::read()[line]"))
                         .start();
 
-                    reader.read_until(b'\n', &mut buffer_line).await.unwrap()
+                    buffer.read_until(b'\n', &mut buffer_line).await.unwrap()
                 };
 
                 #[cfg(feature = "debug")]
