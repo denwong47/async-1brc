@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use clap::Parser;
 
 #[cfg(feature = "bench")]
 use tokio::time::Instant;
@@ -6,10 +7,22 @@ use tokio::time::Instant;
 #[cfg(feature = "assert")]
 use async_1brc::assertion;
 
-use async_1brc::{config, parser, reader};
+use async_1brc::{CliArgs, parser, reader};
 
 #[tokio::main]
 async fn main() {
+    let args = CliArgs::parse();
+
+    println!(
+        "Parameters:\n\
+        - File: {}\n\
+        - Output: {}\n\
+        - Threads: {}\n\
+        - Chunk size: {}\n\
+        - Max chunk size: {}\n",
+        args.file, args.output, args.threads, args.chunk_size, args.max_chunk_size
+    );
+
     #[cfg(feature = "debug")]
     println!("Starting the reader coroutine.");
 
@@ -17,21 +30,21 @@ async fn main() {
     let start = Instant::now();
 
     let reader = Arc::new(reader::RowsReader::with_chunk_sizes(
-        config::CHUNK_SIZE,
-        config::MAX_CHUNK_SIZE,
+        args.chunk_size,
+        args.max_chunk_size,
     ));
 
     let (_, records) = tokio::join!(
         async {
-            let file = tokio::fs::File::open(config::MEASURMENTS_PATH).await.unwrap();
-            let buffer = tokio::io::BufReader::with_capacity(config::CHUNK_SIZE, file);
+            let file = tokio::fs::File::open(&args.file).await.unwrap();
+            let buffer = tokio::io::BufReader::with_capacity(args.chunk_size, file);
 
             reader.read(buffer).await
         },
-        parser::task::read_from_reader(Arc::clone(&reader), config::NUMBER_OF_THREADS),
+        parser::task::read_from_reader(Arc::clone(&reader), args.threads),
     );
 
-    records.export_file(config::OUTPUT_PATH).await;
+    records.export_file(&args.output).await;
 
     #[cfg(feature = "bench")]
     println!("Elapsed time: {:?}", start.elapsed());
@@ -74,7 +87,7 @@ async fn main() {
         assert_eq!(output_len, 1_000_000_000);
 
         println!("Matching the output and the baseline files...");
-        assertion::match_files(config::OUTPUT_PATH, config::BASELINE_PATH).await;
+        assertion::match_files(&args.output, &args.baseline).await;
 
         println!("All assertions passed.")
     }

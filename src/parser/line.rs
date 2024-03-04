@@ -59,6 +59,12 @@ pub async fn parse_name(buffer: &mut Cursor<&[u8]>) -> Option<Vec<u8>> {
             Ok(ascii) => {
                 name.push(ascii);
             }
+            Err(ref err) if err.kind() == std::io::ErrorKind::UnexpectedEof => {
+                #[cfg(feature = "debug")]
+                println!("parse_name() had an EOF.");
+                return None
+            },
+            // This is normal behaviour when the buffer has ended.
             Err(_err) => {
                 #[cfg(feature = "debug")]
                 println!("parse_name() read_u8() error: {}", _err);

@@ -2,6 +2,9 @@ pub mod config;
 pub mod parser;
 pub mod reader;
 
+mod args;
+pub use args::CliArgs;
+
 #[cfg(feature = "assert")]
 pub mod assertion;
 
