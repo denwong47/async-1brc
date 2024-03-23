@@ -62,8 +62,8 @@ pub async fn parse_name(buffer: &mut Cursor<&[u8]>) -> Option<Vec<u8>> {
             Err(ref err) if err.kind() == std::io::ErrorKind::UnexpectedEof => {
                 #[cfg(feature = "debug")]
                 println!("parse_name() had an EOF.");
-                return None
-            },
+                return None;
+            }
             // This is normal behaviour when the buffer has ended.
             Err(_err) => {
                 #[cfg(feature = "debug")]
@@ -74,7 +74,8 @@ pub async fn parse_name(buffer: &mut Cursor<&[u8]>) -> Option<Vec<u8>> {
         }
     }
 
-    name.shrink_to_fit();
+    // This is memory efficient, but it worsens the performance by ~7s.
+    // name.shrink_to_fit();
 
     Some(name)
 }

@@ -3,7 +3,7 @@
 use deadqueue::unlimited::Queue;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use tokio::{
-    io::{AsyncBufReadExt, AsyncReadExt, AsyncBufRead},
+    io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt},
     sync::watch,
 };
 

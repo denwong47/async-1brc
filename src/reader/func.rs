@@ -58,13 +58,20 @@ pub fn push_buffer(
 
 /// Check if the buffer is full.
 pub fn buffer_full(buffer_export: &Vec<u8>, chunk_size: usize) -> bool {
-    let _result =
-        buffer_export.len() >= buffer_export.capacity() - chunk_size - config::MAX_LINE_LENGTH;
-
-    #[cfg(feature = "debug")]
-    if _result {
-        println!("RowsReader: buffer_full() buffer full: {}", _result);
+    #[cfg(not(feature = "debug"))]
+    {
+        buffer_export.len() >= buffer_export.capacity() - chunk_size - config::MAX_LINE_LENGTH
     }
 
-    _result
+    #[cfg(feature = "debug")]
+    {
+        let _result =
+            buffer_export.len() >= buffer_export.capacity() - chunk_size - config::MAX_LINE_LENGTH;
+    
+        if _result {
+            println!("RowsReader: buffer_full() buffer full: {}", _result);
+        }
+    
+        _result
+    }
 }

@@ -3,15 +3,23 @@ ramdisk_macos:
 	cp ../1brc/measurements.txt /Volumes/RAMDisk/
 
 define cargo
-cargo ${ACTION} --release --features=${FEATURES}
+cargo ${ACTION} --release --bin main --features=${FEATURES} -- ${ARGS}
 endef
 
 cargo:
 	$(cargo)
 
-run: ACTION:=run
-run: FEATURES:=bench,assert
-run: cargo
+run_ramdisk: ACTION:=run
+run_ramdisk: FEATURES:=bench,assert
+run_ramdisk: ARGS:=--file=/Volumes/RAMDisk/measurements.txt
+run_ramdisk: cargo
+
+run_local: ACTION:=run
+run_local: FEATURES:=bench,assert
+run_local: ARGS:=--file=../1brc/measurements.txt
+run_local: cargo
+
+run: run_local
 
 test: ACTION:=test
 test: FEATURES:=bench,debug

@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use clap::Parser;
+use std::sync::Arc;
 
 #[cfg(feature = "bench")]
 use tokio::time::Instant;
@@ -7,7 +7,7 @@ use tokio::time::Instant;
 #[cfg(feature = "assert")]
 use async_1brc::assertion;
 
-use async_1brc::{CliArgs, parser, reader};
+use async_1brc::{parser, reader, CliArgs};
 
 #[tokio::main]
 async fn main() {

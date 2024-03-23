@@ -29,6 +29,7 @@ pub async fn read_from_reader(reader: Arc<RowsReader>, threads: usize) -> Statio
     }
 
     let mut records = StationRecords::new();
+    #[allow(clippy::unused_enumerate_index)]
     for (_i, handle) in handles.into_iter().enumerate() {
         records += handle.await.unwrap();
 

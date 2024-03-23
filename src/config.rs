@@ -2,7 +2,7 @@
 
 pub const MAX_LINE_LENGTH: usize = 30;
 
-pub const CHUNK_SIZE: usize = 8192 * 8; // Max buffer capacity 2097152 - higher does not change anything.
+pub const CHUNK_SIZE: usize = 65536 * 8; // Max buffer capacity 2097152 - higher does not change anything.
 
 pub const MAX_CHUNK_SIZE: usize = CHUNK_SIZE * 16 + MAX_LINE_LENGTH;
 
