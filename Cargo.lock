@@ -73,6 +73,7 @@ dependencies = [
  "deadqueue",
  "gxhash",
  "itertools",
+ "nohash",
  "tokio",
 ]
 
@@ -254,6 +255,12 @@ checksum = "9d811f3e15f28568be3407c8e7fdb6514c1cda3cb30683f15b6a1a1dc4ea14a7"
 dependencies = [
  "adler",
 ]
+
+[[package]]
+name = "nohash"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a0f889fb66f7acdf83442c35775764b51fed3c606ab9cee51500dbde2cf528ca"
 
 [[package]]
 name = "num_cpus"

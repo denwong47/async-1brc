@@ -5,7 +5,7 @@ use std::io::Cursor;
 use tokio::io::AsyncReadExt;
 
 use super::super::config;
-use super::{func, models};
+use super::{func, models, LiteHashBuffer};
 
 #[cfg(feature = "timed-extreme")]
 use super::super::timed::TimedOperation;
@@ -43,7 +43,7 @@ pub async fn parse_bytes(bytes: Vec<u8>, records: &mut models::StationRecords) {
 /// This expects the buffer to be at the start of the name, and ends at the semicolon.
 /// No other characters are allowed to terminate the name; if the buffer ends before the semicolon,
 /// the behavior is undefined.
-pub async fn parse_name(buffer: &mut Cursor<&[u8]>) -> Option<Vec<u8>> {
+pub async fn parse_name(buffer: &mut Cursor<&[u8]>) -> Option<LiteHashBuffer> {
     let mut name = Vec::with_capacity(config::MAX_LINE_LENGTH);
 
     #[cfg(feature = "timed-extreme")]
@@ -77,7 +77,7 @@ pub async fn parse_name(buffer: &mut Cursor<&[u8]>) -> Option<Vec<u8>> {
     // This is memory efficient, but it worsens the performance by ~7s.
     // name.shrink_to_fit();
 
-    Some(name)
+    Some(name.into())
 }
 
 /// Parse value.
@@ -180,7 +180,7 @@ mod test {
 
                     assert_eq!(
                         parse_name(&mut buffer).await,
-                        $expected.map(|text| text.as_bytes().to_vec())
+                        $expected.map(|text| text.as_bytes().to_vec().into())
                     );
                 }
             )*
@@ -219,7 +219,7 @@ mod test {
                     parse_bytes(bytes, &mut records).await;
 
                     assert_eq!(
-                        records.get($expected.0).unwrap().sum,
+                        records.get(&$expected.0.to_vec().into()).unwrap().sum,
                         $expected.1
                     );
                 }

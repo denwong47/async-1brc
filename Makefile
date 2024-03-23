@@ -22,7 +22,7 @@ run_local: cargo
 run: run_local
 
 test: ACTION:=test
-test: FEATURES:=bench,debug
+test: FEATURES:=bench,debug,nohash
 test: cargo
 
 clippy: ACTION:=clippy
