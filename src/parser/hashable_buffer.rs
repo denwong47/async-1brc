@@ -1,7 +1,7 @@
 //! A [`u8`] buffer that just use its first 7 characters as the hash.
 
 /// A [`u8`] buffer that just use its first 7 characters as the hash.
-/// 
+///
 /// This will cause hash collisions if two identically sized buffer contains identical
 /// first 7 characters; however this is considered not a problem for the purpose of this
 /// crate.
@@ -13,9 +13,7 @@ pub struct LiteHashBuffer {
 impl LiteHashBuffer {
     /// Create a new instance with a buffer.
     pub fn new(buffer: Vec<u8>) -> Self {
-        Self {
-            buffer,
-        }
+        Self { buffer }
     }
 }
 
@@ -39,15 +37,13 @@ impl std::hash::Hash for LiteHashBuffer {
     // This however did not appear to be as fast as GxHash in itself.
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         state.write_u64(
-            self.buffer.iter()
-            .take(7)
-            .enumerate()
-            .fold(
-                self.buffer.len() as u64,
-                |acc, (pos, &byte)| {
+            self.buffer
+                .iter()
+                .take(7)
+                .enumerate()
+                .fold(self.buffer.len() as u64, |acc, (pos, &byte)| {
                     acc | ((byte as u64) << (pos * 8))
-                }
-            )
+                }),
         )
     }
 }
@@ -61,4 +57,4 @@ impl std::ops::Deref for LiteHashBuffer {
     fn deref(&self) -> &Self::Target {
         &self.buffer
     }
-}   
+}

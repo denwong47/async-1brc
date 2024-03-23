@@ -19,10 +19,9 @@ async fn main() {
     println!(
         "Parameters:\n\
         - File: {}\n\
-        - Threads: {}\n\
         - Chunk size: {}\n\
         - Max chunk size: {}\n",
-        args.file, args.threads, args.chunk_size, args.max_chunk_size
+        args.file, args.chunk_size, args.max_chunk_size
     );
 
     let mut trials = Vec::with_capacity(TRIALS);

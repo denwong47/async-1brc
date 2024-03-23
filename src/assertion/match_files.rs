@@ -31,7 +31,13 @@ pub async fn match_files(output_path: impl AsRef<Path>, baseline_path: impl AsRe
                 break;
             }
             (Ok(i), Ok(j)) if i == j => {
-                assert_eq!(&output_buffer[..i], &baseline_buffer[..j]);
+                if &output_buffer[..i] != &baseline_buffer[..j] {
+                    panic!(
+                        "The files differ at the following position:\noutput:{}\nbaseline:{}",
+                        String::from_utf8_lossy(&output_buffer[..i]),
+                        String::from_utf8_lossy(&baseline_buffer[..j])
+                    )
+                }
             }
             (Ok(i), Ok(j)) => {
                 panic!(

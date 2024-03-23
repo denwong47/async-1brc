@@ -67,11 +67,11 @@ pub fn buffer_full(buffer_export: &Vec<u8>, chunk_size: usize) -> bool {
     {
         let _result =
             buffer_export.len() >= buffer_export.capacity() - chunk_size - config::MAX_LINE_LENGTH;
-    
+
         if _result {
             println!("RowsReader: buffer_full() buffer full: {}", _result);
         }
-    
+
         _result
     }
 }

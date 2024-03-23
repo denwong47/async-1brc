@@ -123,7 +123,11 @@ pub struct StationRecords {
     stats: gxhash::GxHashMap<LiteHashBuffer, StationStats>,
 
     #[cfg(feature = "nohash")]
-    stats: std::collections::HashMap<LiteHashBuffer, StationStats, BuildHasherDefault<nohash::NoHashHasher<u64>>>,
+    stats: std::collections::HashMap<
+        LiteHashBuffer,
+        StationStats,
+        BuildHasherDefault<nohash::NoHashHasher<u64>>,
+    >,
 }
 
 impl Default for StationRecords {
@@ -144,7 +148,7 @@ impl Default for StationRecords {
             // The actual number of stations is 400-ish.
             stats: std::collections::HashMap::with_capacity_and_hasher(
                 500,
-                BuildHasherDefault::default()
+                BuildHasherDefault::default(),
             ),
         }
     }

@@ -81,6 +81,15 @@ async fn main() {
 
     #[cfg(feature = "assert")]
     '_assertion: {
+        if cfg!(any(
+            feature = "noparse",
+            feature = "noparse-name",
+            feature = "noparse-value"
+        )) {
+            println!("Cannot perform assertions when parsing is partially/fully disabled. Assertion aborted.");
+            return;
+        }
+
         println!("Checking the number of records...");
         let output_len = records.len();
         println!("The number of records: {}", output_len);

@@ -1,6 +1,6 @@
 //! Parsing a 1BRC line.
 
-use std::io::Cursor;
+use std::io::{BufRead, Cursor};
 
 use tokio::io::AsyncReadExt;
 
@@ -25,11 +25,23 @@ pub static PARSE_VALUE_TIMED: std::sync::OnceLock<std::sync::Arc<TimedOperation>
 ///
 /// These parsing functions expect perfect input; if the input is not perfect, the behavior is
 /// undefined.
+#[allow(unreachable_code)]
+#[allow(unused_variables)]
 pub async fn parse_bytes(bytes: Vec<u8>, records: &mut models::StationRecords) {
+    #[cfg(feature = "noparse")]
+    {
+        // This will prevent any parsing from being done at all; all data will be discarded.
+        // This is just for testing purposes.
+        records.insert("some place".as_bytes().into(), 0);
+        return;
+    }
+
+    let mut name = Vec::with_capacity(config::MAX_LINE_LENGTH);
+    let mut digits = Vec::with_capacity(4);
     let mut buffer = Cursor::new(bytes.as_slice());
 
-    while let Some(name) = parse_name(&mut buffer).await {
-        let value = parse_value(&mut buffer).await;
+    while let Some(name) = parse_name(&mut buffer, &mut name).await {
+        let value = parse_value(&mut buffer, &mut digits).await;
 
         // #[cfg(feature="debug")]
         // println!("parse_bytes() found: {} {}", func::bytes_to_string(&name), value);
@@ -43,41 +55,39 @@ pub async fn parse_bytes(bytes: Vec<u8>, records: &mut models::StationRecords) {
 /// This expects the buffer to be at the start of the name, and ends at the semicolon.
 /// No other characters are allowed to terminate the name; if the buffer ends before the semicolon,
 /// the behavior is undefined.
-pub async fn parse_name(buffer: &mut Cursor<&[u8]>) -> Option<LiteHashBuffer> {
-    let mut name = Vec::with_capacity(config::MAX_LINE_LENGTH);
+pub async fn parse_name(buffer: &mut Cursor<&[u8]>, name: &mut Vec<u8>) -> Option<LiteHashBuffer> {
+    // #[cfg(feature = "noparse-name")]
+    // {
+    //     buffer.read_until(b';', &mut Vec::with_capacity(config::MAX_LINE_LENGTH)).unwrap();
+    //     return Some("some place".as_bytes().into());
+    // }
 
     #[cfg(feature = "timed-extreme")]
     let _counter = PARSE_NAME_TIMED
         .get_or_init(|| TimedOperation::new("parse_name()"))
         .start();
 
-    loop {
-        match buffer.read_u8().await {
-            Ok(b';') => {
-                break;
-            }
-            Ok(ascii) => {
-                name.push(ascii);
-            }
-            Err(ref err) if err.kind() == std::io::ErrorKind::UnexpectedEof => {
-                #[cfg(feature = "debug")]
-                println!("parse_name() had an EOF.");
-                return None;
-            }
-            // This is normal behaviour when the buffer has ended.
-            Err(_err) => {
-                #[cfg(feature = "debug")]
-                println!("parse_name() read_u8() error: {}", _err);
+    match buffer.read_until(b';', name) {
+        Ok(count) if count > 0 => {
+            Some({
+                let mut name_with_semicolon = name.split_off(0);
+                name_with_semicolon.pop();
+                name_with_semicolon.into()
+            })
+        },
+        Ok(_) => {
+            #[cfg(feature = "debug")]
+            println!("parse_name() had an EOF.");
+            None
+        }
+        // This is normal behaviour when the buffer has ended.
+        Err(_err) => {
+            #[cfg(feature = "debug")]
+            println!("parse_name() read_u8() error: {}", _err);
 
-                return None;
-            }
+            None
         }
     }
-
-    // This is memory efficient, but it worsens the performance by ~7s.
-    // name.shrink_to_fit();
-
-    Some(name.into())
 }
 
 /// Parse value.
@@ -87,9 +97,14 @@ pub async fn parse_name(buffer: &mut Cursor<&[u8]>) -> Option<LiteHashBuffer> {
 /// for example, 123.4 will be returned as 1234.
 ///
 /// If the value contains more than 1 decimal point, the behavior is undefined.
-pub async fn parse_value<'a>(buffer: &mut Cursor<&[u8]>) -> i16 {
+pub async fn parse_value<'a>(buffer: &mut Cursor<&[u8]>, digits: &mut Vec<u8>) -> i16 {
+    // #[cfg(feature = "noparse-value")]
+    // {
+    //     buffer.read_until(b'\n', &mut Vec::with_capacity(config::MAX_LINE_LENGTH)).await;
+    //     return 0;
+    // }
+
     let mut multiplier: i16 = 1;
-    let mut digits = Vec::with_capacity(4);
 
     #[cfg(feature = "timed-extreme")]
     let _counter = PARSE_VALUE_TIMED
@@ -121,7 +136,7 @@ pub async fn parse_value<'a>(buffer: &mut Cursor<&[u8]>) -> i16 {
     }
 
     digits
-        .into_iter()
+        .drain(..)
         .fold(0, |acc, digit| acc * 10 + digit as i16)
         * multiplier
 }
@@ -140,9 +155,10 @@ mod test {
                 #[tokio::test]
                 async fn $name() {
                     let mut buffer = Cursor::new($input.as_bytes());
+                    let mut digits = Vec::with_capacity(4);
 
                     assert_eq!(
-                        parse_value(&mut buffer).await,
+                        parse_value(&mut buffer, &mut digits).await,
                         $expected
                     );
 
@@ -178,8 +194,10 @@ mod test {
                 async fn $name() {
                     let mut buffer = Cursor::new($input.as_bytes());
 
+                    let mut name = Vec::with_capacity(config::MAX_LINE_LENGTH);
+
                     assert_eq!(
-                        parse_name(&mut buffer).await,
+                        parse_name(&mut buffer, &mut name).await,
                         $expected.map(|text| text.as_bytes().to_vec().into())
                     );
                 }

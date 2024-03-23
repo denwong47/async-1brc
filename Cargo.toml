@@ -33,3 +33,6 @@ assert = []
 timed = []
 timed-extreme = ["timed"] # this has a real performance impact
 nohash = ["dep:nohash"]
+noparse = ["noparse-name", "noparse-value"]
+noparse-name = []
+noparse-value = []
