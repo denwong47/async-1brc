@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 A quick utility to generate lines for me to test on a train without internet.
 """
@@ -37,7 +38,7 @@ class CliArgs(BaseModel):
             raise ValueError(
                 f"Cannot write to a directory: {path}"
             )
-        
+
         return path
 
 def gen_one_line(

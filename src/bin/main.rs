@@ -69,13 +69,15 @@ async fn main() {
         }
         #[cfg(feature = "timed-extreme")]
         {
-            parser::line::PARSE_NAME_TIMED.get().map(|ops| ops.report());
-            parser::line::PARSE_VALUE_TIMED
-                .get()
-                .map(|ops| ops.report());
-            parser::models::HASH_INSERT_TIMED
-                .get()
-                .map(|ops| ops.report());
+            if let Some(ops) = parser::line::PARSE_NAME_TIMED.get() {
+                ops.report()
+            }
+            if let Some(ops) = parser::line::PARSE_VALUE_TIMED.get() {
+                ops.report()
+            }
+            if let Some(ops) = parser::models::HASH_INSERT_TIMED.get() {
+                ops.report()
+            }
         }
     }
 

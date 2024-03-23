@@ -54,7 +54,7 @@ use tokio::time::Instant;
 ///             }
 ///         }
 ///     );
-///     
+///
 ///     for handle in handles {
 ///         handle.await;
 ///     }

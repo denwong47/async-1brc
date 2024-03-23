@@ -1,5 +1,7 @@
 # Personal exercise on 1BRC using Rust
 
+![Rust CI](https://github.com/denwong47/async-1brc/actions/workflows/rust-CI.yml/badge.svg?branch=main)
+
 This is a personal exercise to solve the [1BRC](https://github.com/gunnarmorling/1brc) challenge
 using Rust. It may not conform to all the challenge requirements due to differences in equipments
 availability and personal preferences, not to mention that the original challenge is in Java to begin
@@ -37,7 +39,6 @@ even though it may incur runtime overheads.
 ## Running the program
 
 ```sh
-make ramdisk_macos # do this once per boot
 make run
 ```
 
@@ -55,4 +56,3 @@ make run
 - For the purpose of [`gxhash`](https://docs.rs/crate/gxhash/latest), `-C target-cpu=native`
   will be set by default to enable the use of `AES` instructions. This however may prevent
   compiled binaries from being used on other machines.
-

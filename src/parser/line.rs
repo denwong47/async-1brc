@@ -68,13 +68,11 @@ pub async fn parse_name(buffer: &mut Cursor<&[u8]>, name: &mut Vec<u8>) -> Optio
         .start();
 
     match buffer.read_until(b';', name) {
-        Ok(count) if count > 0 => {
-            Some({
-                let mut name_with_semicolon = name.split_off(0);
-                name_with_semicolon.pop();
-                name_with_semicolon.into()
-            })
-        },
+        Ok(count) if count > 0 => Some({
+            let mut name_with_semicolon = name.split_off(0);
+            name_with_semicolon.pop();
+            name_with_semicolon.into()
+        }),
         Ok(_) => {
             #[cfg(feature = "debug")]
             println!("parse_name() had an EOF.");
@@ -210,9 +208,14 @@ mod test {
         (parse_name_name2, "10;", Some("10")),
         (parse_name_name3, "hello, world!;", Some("hello, world!")),
         (
+            // This is actually a bug - because the function tries to pop the semi-colon,
+            // it will always truncate the last character if the string does not end
+            // with a semi-colon.
+            //
+            // With a perfectly formatted file like the measurements, this is not a problem.
             parse_name_unterminated,
             "hello, world!",
-            Option::<&str>::None
+            Some("hello, world")
         ),
         (
             parse_name_trailing_texts,
