@@ -7,7 +7,7 @@ use tokio::{fs::File, io::AsyncWriteExt};
 
 use super::{func, line, LiteHashBuffer};
 
-use crate::reader::RowsReader;
+use crate::{config, reader::RowsReader};
 
 #[cfg(feature = "timed")]
 use super::super::timed::TimedOperation;
@@ -246,6 +246,9 @@ impl StationRecords {
     pub async fn read_from_reader(reader: &RowsReader) -> Self {
         let mut records = Self::new();
 
+        let mut name = Vec::with_capacity(config::MAX_LINE_LENGTH);
+        let mut digits = Vec::with_capacity(4);
+
         while let Some(buffer) = reader.pop().await {
             #[cfg(feature = "debug")]
             println!(
@@ -253,7 +256,7 @@ impl StationRecords {
                 len = buffer.len()
             );
 
-            line::parse_bytes(buffer, &mut records).await;
+            line::parse_bytes(buffer, &mut name, &mut digits, &mut records).await;
         }
 
         #[cfg(feature = "debug")]

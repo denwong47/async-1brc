@@ -4,7 +4,6 @@ use std::io::{BufRead, Cursor};
 
 use tokio::io::AsyncReadExt;
 
-use super::super::config;
 use super::{func, models, LiteHashBuffer};
 
 #[cfg(feature = "timed-extreme")]
@@ -27,7 +26,12 @@ pub static PARSE_VALUE_TIMED: std::sync::OnceLock<std::sync::Arc<TimedOperation>
 /// undefined.
 #[allow(unreachable_code)]
 #[allow(unused_variables)]
-pub async fn parse_bytes(bytes: Vec<u8>, records: &mut models::StationRecords) {
+pub async fn parse_bytes(
+    bytes: Vec<u8>,
+    name: &mut Vec<u8>,
+    digits: &mut Vec<u8>,
+    records: &mut models::StationRecords,
+) {
     #[cfg(feature = "noparse")]
     {
         // This will prevent any parsing from being done at all; all data will be discarded.
@@ -36,12 +40,10 @@ pub async fn parse_bytes(bytes: Vec<u8>, records: &mut models::StationRecords) {
         return;
     }
 
-    let mut name = Vec::with_capacity(config::MAX_LINE_LENGTH);
-    let mut digits = Vec::with_capacity(4);
     let mut buffer = Cursor::new(bytes.as_slice());
 
-    while let Some(name) = parse_name(&mut buffer, &mut name).await {
-        let value = parse_value(&mut buffer, &mut digits).await;
+    while let Some(name) = parse_name(&mut buffer, name).await {
+        let value = parse_value(&mut buffer, digits).await;
 
         // #[cfg(feature="debug")]
         // println!("parse_bytes() found: {} {}", func::bytes_to_string(&name), value);
@@ -142,6 +144,7 @@ pub async fn parse_value<'a>(buffer: &mut Cursor<&[u8]>, digits: &mut Vec<u8>) -
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::config;
 
     macro_rules! expand_parse_value_tests {
         ($((
@@ -237,7 +240,10 @@ mod test {
                     let mut records = models::StationRecords::new();
                     let bytes = $input.as_bytes().to_vec();
 
-                    parse_bytes(bytes, &mut records).await;
+                    let mut name = Vec::with_capacity(config::MAX_LINE_LENGTH);
+                    let mut digits = Vec::with_capacity(4);
+
+                    parse_bytes(bytes, &mut name, &mut digits, &mut records).await;
 
                     assert_eq!(
                         records.get(&$expected.0.to_vec().into()).unwrap().sum,
