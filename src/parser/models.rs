@@ -243,17 +243,21 @@ impl StationRecords {
     }
 
     /// The main asynchronous function to read from a [`RowsReader`] and parse the data into itself.
-    pub async fn read_from_reader(reader: &RowsReader) -> Self {
+    pub async fn read_from_reader(reader: &RowsReader, max_chunk_size: usize) -> Self {
         let mut records = Self::new();
 
-        while let Some(buffer) = reader.pop().await {
+        let mut buffer = Vec::with_capacity(max_chunk_size);
+
+        while let Some(bytes) = reader.fill(buffer).await {
             #[cfg(feature = "debug")]
             println!(
                 "read_from_reader() found {len} bytes of data.",
-                len = buffer.len()
+                len = bytes.len()
             );
 
-            line::parse_bytes(&buffer[..], &mut records).await;
+            line::parse_bytes(&bytes[..], &mut records).await;
+
+            buffer = bytes;
         }
 
         #[cfg(feature = "debug")]

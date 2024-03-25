@@ -30,32 +30,6 @@ pub fn clone_buffer(buffer_read: &mut [u8], buffer_export: &mut Vec<u8>) {
     buffer_export.extend_from_slice(buffer_read);
 }
 
-/// Push buffer to the queue and reset the buffer.
-pub fn push_buffer(
-    buffer_export: &mut Vec<u8>,
-    queue: &deadqueue::unlimited::Queue<Vec<u8>>,
-) -> usize {
-    if !buffer_export.is_empty() {
-        let mut buffer_new = Vec::<u8>::with_capacity(buffer_export.capacity());
-
-        {
-            #[cfg(feature = "timed")]
-            let _counter = MEM_SWAP_TIMED
-                .get_or_init(|| TimedOperation::new("mem_swap"))
-                .start();
-            std::mem::swap(&mut buffer_new, buffer_export);
-        }
-
-        let len = buffer_new.len();
-        queue.push(buffer_new);
-        len
-    } else {
-        #[cfg(feature = "debug")]
-        println!("RowsReader: push_buffer() skipped empty buffer.");
-        0
-    }
-}
-
 /// Check if the buffer is full.
 pub fn buffer_full(buffer_export: &Vec<u8>, chunk_size: usize) -> bool {
     #[cfg(not(feature = "debug"))]

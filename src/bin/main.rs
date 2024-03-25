@@ -41,7 +41,7 @@ async fn main() {
 
             reader.read(buffer).await
         },
-        parser::task::read_from_reader(Arc::clone(&reader), args.threads),
+        parser::task::read_from_reader(Arc::clone(&reader), args.threads, args.max_chunk_size),
     );
 
     records.export_file(&args.output).await;

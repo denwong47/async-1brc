@@ -36,15 +36,20 @@ async fn main() {
         let reader = reader::RowsReader::with_chunk_sizes(args.chunk_size, args.max_chunk_size);
 
         let file = tokio::fs::File::open(&args.file).await.unwrap();
-        let buffer = tokio::io::BufReader::with_capacity(args.chunk_size, file);
+        let bufreader = tokio::io::BufReader::with_capacity(args.chunk_size, file);
 
         let mut count = 0;
         tokio::select! {
-            _ = reader.read(buffer) => {},
+            _ = reader.read(bufreader) => {},
             _ = async {
+                let mut buffer = Vec::with_capacity(args.max_chunk_size);
                 loop {
-                    reader.pop().await;
-                    count += 1;
+                    if let Some(bytes) = reader.fill(buffer).await {
+                        buffer = bytes;
+                        count += 1;
+                    } else {
+                        break
+                    }
                 }
             } => {}
         };
