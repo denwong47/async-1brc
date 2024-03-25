@@ -253,7 +253,7 @@ impl StationRecords {
                 len = buffer.len()
             );
 
-            line::parse_bytes(buffer, &mut records).await;
+            line::parse_bytes(&buffer[..], &mut records).await;
         }
 
         #[cfg(feature = "debug")]

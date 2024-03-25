@@ -1,8 +1,6 @@
 //! Parsing a 1BRC line.
 
-use std::io::{BufRead, Cursor};
-
-use tokio::io::AsyncReadExt;
+use tokio::io::{AsyncBufReadExt, AsyncReadExt};
 
 use super::super::config;
 use super::{func, models, LiteHashBuffer};
@@ -27,7 +25,10 @@ pub static PARSE_VALUE_TIMED: std::sync::OnceLock<std::sync::Arc<TimedOperation>
 /// undefined.
 #[allow(unreachable_code)]
 #[allow(unused_variables)]
-pub async fn parse_bytes(bytes: Vec<u8>, records: &mut models::StationRecords) {
+pub async fn parse_bytes<R>(mut bytes: R, records: &mut models::StationRecords)
+where
+    R: AsyncReadExt + AsyncBufReadExt + Unpin,
+{
     #[cfg(feature = "noparse")]
     {
         // This will prevent any parsing from being done at all; all data will be discarded.
@@ -38,10 +39,9 @@ pub async fn parse_bytes(bytes: Vec<u8>, records: &mut models::StationRecords) {
 
     let mut name = Vec::with_capacity(config::MAX_LINE_LENGTH);
     let mut digits = Vec::with_capacity(4);
-    let mut buffer = Cursor::new(bytes.as_slice());
 
-    while let Some(name) = parse_name(&mut buffer, &mut name).await {
-        let value = parse_value(&mut buffer, &mut digits).await;
+    while let Some(name) = parse_name(&mut bytes, &mut name).await {
+        let value = parse_value(&mut bytes, &mut digits).await;
 
         // #[cfg(feature="debug")]
         // println!("parse_bytes() found: {} {}", func::bytes_to_string(&name), value);
@@ -55,7 +55,10 @@ pub async fn parse_bytes(bytes: Vec<u8>, records: &mut models::StationRecords) {
 /// This expects the buffer to be at the start of the name, and ends at the semicolon.
 /// No other characters are allowed to terminate the name; if the buffer ends before the semicolon,
 /// the behavior is undefined.
-pub async fn parse_name(buffer: &mut Cursor<&[u8]>, name: &mut Vec<u8>) -> Option<LiteHashBuffer> {
+pub async fn parse_name<R>(buffer: &mut R, name: &mut Vec<u8>) -> Option<LiteHashBuffer>
+where
+    R: AsyncBufReadExt + Unpin,
+{
     // #[cfg(feature = "noparse-name")]
     // {
     //     buffer.read_until(b';', &mut Vec::with_capacity(config::MAX_LINE_LENGTH)).unwrap();
@@ -67,7 +70,7 @@ pub async fn parse_name(buffer: &mut Cursor<&[u8]>, name: &mut Vec<u8>) -> Optio
         .get_or_init(|| TimedOperation::new("parse_name()"))
         .start();
 
-    match buffer.read_until(b';', name) {
+    match buffer.read_until(b';', name).await {
         Ok(count) if count > 0 => Some({
             let mut name_with_semicolon = name.split_off(0);
             name_with_semicolon.pop();
@@ -95,7 +98,10 @@ pub async fn parse_name(buffer: &mut Cursor<&[u8]>, name: &mut Vec<u8>) -> Optio
 /// for example, 123.4 will be returned as 1234.
 ///
 /// If the value contains more than 1 decimal point, the behavior is undefined.
-pub async fn parse_value(buffer: &mut Cursor<&[u8]>, digits: &mut Vec<u8>) -> i16 {
+pub async fn parse_value<R>(buffer: &mut R, digits: &mut Vec<u8>) -> i16
+where
+    R: AsyncReadExt + Unpin,
+{
     // #[cfg(feature = "noparse-value")]
     // {
     //     buffer.read_until(b'\n', &mut Vec::with_capacity(config::MAX_LINE_LENGTH)).await;
@@ -152,8 +158,10 @@ mod test {
             $(
                 #[tokio::test]
                 async fn $name() {
-                    let mut buffer = Cursor::new($input.as_bytes());
+                    let bytes = $input.as_bytes().to_vec();
                     let mut digits = Vec::with_capacity(4);
+
+                    let mut buffer = &bytes[..];
 
                     assert_eq!(
                         parse_value(&mut buffer, &mut digits).await,
@@ -190,8 +198,8 @@ mod test {
             $(
                 #[tokio::test]
                 async fn $name() {
-                    let mut buffer = Cursor::new($input.as_bytes());
-
+                    let bytes = $input.as_bytes().to_vec();
+                    let mut buffer = &bytes[..];
                     let mut name = Vec::with_capacity(config::MAX_LINE_LENGTH);
 
                     assert_eq!(
@@ -236,8 +244,9 @@ mod test {
                 async fn $name() {
                     let mut records = models::StationRecords::new();
                     let bytes = $input.as_bytes().to_vec();
+                    let buffer = &bytes[..];
 
-                    parse_bytes(bytes, &mut records).await;
+                    parse_bytes(buffer, &mut records).await;
 
                     assert_eq!(
                         records.get(&$expected.0.to_vec().into()).unwrap().sum,
