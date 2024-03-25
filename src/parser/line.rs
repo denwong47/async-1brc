@@ -38,7 +38,7 @@ where
     }
 
     let mut name = Vec::with_capacity(config::MAX_LINE_LENGTH);
-    let mut digits = Vec::with_capacity(4);
+    let mut digits = Vec::with_capacity(5);
 
     while let Some(name) = parse_name(&mut bytes, &mut name).await {
         let value = parse_value(&mut bytes, &mut digits).await;
@@ -98,9 +98,16 @@ where
 /// for example, 123.4 will be returned as 1234.
 ///
 /// If the value contains more than 1 decimal point, the behavior is undefined.
+///
+/// # Warning
+///
+/// This function expects each line to be terminated with a newline character.
+/// It will always drop the last character - which is expected to be a newline -
+/// regardless of what it actually is. This requires strict conformance to the
+/// input format.
 pub async fn parse_value<R>(buffer: &mut R, digits: &mut Vec<u8>) -> i16
 where
-    R: AsyncReadExt + Unpin,
+    R: AsyncBufReadExt + Unpin,
 {
     // #[cfg(feature = "noparse-value")]
     // {
@@ -115,33 +122,22 @@ where
         .get_or_init(|| TimedOperation::new("parse_value()"))
         .start();
 
-    loop {
-        match buffer.read_u8().await {
-            Ok(b'-') => {
-                // This does not care if the '-' is in the middle of the number;
-                // this is to safe computation.
-                multiplier = -1;
-            }
-            Ok(b'\n') => {
-                break;
-            }
-            Ok(b'.') => {}
-            Ok(ascii) => {
-                // This is safe because we know that the byte is a digit.
-                digits.push(func::u8_to_digit(ascii));
-            }
-            Err(_err) => {
-                #[cfg(feature = "debug")]
-                println!("parse_value() read_u8() error: {}", _err);
+    let len = buffer.read_until(b'\n', digits).await.expect(
+        "parse_value() failed to read until newline; this should never happen, as measurement.txt is \
+        guaranteed to have a newline.",
+    );
 
-                break;
-            }
-        }
+    if digits[0] == b'-' {
+        multiplier = -1;
     }
 
     digits
         .drain(..)
-        .fold(0, |acc, digit| acc * 10 + digit as i16)
+        .take(len - 1)
+        .fold(0, |acc, digit| match digit {
+            i if i.is_ascii_digit() => acc * 10 + func::u8_to_digit(i) as i16,
+            _ => acc,
+        })
         * multiplier
 }
 
@@ -158,8 +154,9 @@ mod test {
             $(
                 #[tokio::test]
                 async fn $name() {
-                    let bytes = $input.as_bytes().to_vec();
-                    let mut digits = Vec::with_capacity(4);
+                    let mut bytes = $input.as_bytes().to_vec();
+                    bytes.push(b'\n');
+                    let mut digits = Vec::with_capacity(5);
 
                     let mut buffer = &bytes[..];
 
@@ -167,8 +164,6 @@ mod test {
                         parse_value(&mut buffer, &mut digits).await,
                         $expected
                     );
-
-                    assert!(buffer.read_u8().await.is_err());
                 }
             )*
         };
@@ -258,7 +253,11 @@ mod test {
     }
 
     expand_parse_bytes_tests!(
-        (parse_bytes_single_line, "jack;1.2", ("jack".as_bytes(), 12)),
+        (
+            parse_bytes_single_line,
+            "jack;1.2\n",
+            ("jack".as_bytes(), 12)
+        ),
         (
             parse_bytes_single_line_with_newline,
             "jack;1.2\n",
