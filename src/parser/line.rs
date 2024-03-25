@@ -95,7 +95,7 @@ pub async fn parse_name(buffer: &mut Cursor<&[u8]>, name: &mut Vec<u8>) -> Optio
 /// for example, 123.4 will be returned as 1234.
 ///
 /// If the value contains more than 1 decimal point, the behavior is undefined.
-pub async fn parse_value<'a>(buffer: &mut Cursor<&[u8]>, digits: &mut Vec<u8>) -> i16 {
+pub async fn parse_value(buffer: &mut Cursor<&[u8]>, digits: &mut Vec<u8>) -> i16 {
     // #[cfg(feature = "noparse-value")]
     // {
     //     buffer.read_until(b'\n', &mut Vec::with_capacity(config::MAX_LINE_LENGTH)).await;

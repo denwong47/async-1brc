@@ -27,6 +27,15 @@ where
     }
 }
 
+#[cfg(not(feature = "nohash"))]
+impl std::hash::Hash for LiteHashBuffer {
+    // Hash the buffer using the [`GxHash`] algorithm.
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.buffer.hash(state)
+    }
+}
+
+#[cfg(feature = "nohash")]
 impl std::hash::Hash for LiteHashBuffer {
     // Invoke write_u64() on the length of the buffer followed by the first 7 bytes of
     // the buffer.
