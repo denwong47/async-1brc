@@ -5,7 +5,7 @@ use std::path::Path;
 use itertools::Itertools;
 use tokio::{fs::File, io::AsyncWriteExt};
 
-use super::{func, line, LiteHashBuffer};
+use super::*;
 
 use crate::reader::RowsReader;
 
@@ -17,7 +17,7 @@ pub static HASH_INSERT_TIMED: std::sync::OnceLock<std::sync::Arc<TimedOperation>
     std::sync::OnceLock::new();
 
 #[cfg(feature = "nohash")]
-pub use std::hash::BuildHasherDefault;
+use std::hash::BuildHasherDefault;
 
 /// Statistics of a single station.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -134,11 +134,7 @@ impl Default for StationRecords {
     #[cfg(not(feature = "nohash"))]
     fn default() -> Self {
         Self {
-            // The actual number of stations is 400-ish.
-            stats: std::collections::HashMap::with_capacity_and_hasher(
-                500,
-                gxhash::GxBuildHasher::default(),
-            ),
+            stats: std::collections::HashMap::with_hasher(gxhash::GxBuildHasher::default()),
         }
     }
 
@@ -253,7 +249,11 @@ impl StationRecords {
                 len = buffer.len()
             );
 
+            #[cfg(not(feature = "parse-simd"))]
             line::parse_bytes(&buffer[..], &mut records).await;
+
+            #[cfg(feature = "parse-simd")]
+            LineParser::parse_bytes(buffer, &mut records);
         }
 
         #[cfg(feature = "debug")]

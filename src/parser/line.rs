@@ -115,8 +115,6 @@ where
     //     return 0;
     // }
 
-    let mut multiplier: i16 = 1;
-
     #[cfg(feature = "timed-extreme")]
     let _counter = PARSE_VALUE_TIMED
         .get_or_init(|| TimedOperation::new("parse_value()"))
@@ -127,18 +125,7 @@ where
         guaranteed to have a newline.",
     );
 
-    if digits[0] == b'-' {
-        multiplier = -1;
-    }
-
-    digits
-        .drain(..)
-        .take(len - 1)
-        .fold(0, |acc, digit| match digit {
-            i if i.is_ascii_digit() => acc * 10 + func::u8_to_digit(i) as i16,
-            _ => acc,
-        })
-        * multiplier
+    func::digits_to_number(digits.drain(..).take(len - 1))
 }
 
 #[cfg(test)]

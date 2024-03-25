@@ -10,3 +10,6 @@ pub mod task;
 
 mod hashable_buffer;
 pub use hashable_buffer::LiteHashBuffer;
+
+mod simd_parser;
+pub use simd_parser::LineParser;

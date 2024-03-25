@@ -1,4 +1,4 @@
-#![feature(portable_simd)]
+#![feature(portable_simd, iter_array_chunks, iter_map_windows)]
 
 pub mod config;
 pub mod parser;

@@ -32,6 +32,7 @@ bench = []
 assert = []
 timed = []
 timed-extreme = ["timed"] # this has a real performance impact
+parse-simd = []
 nohash = ["dep:nohash"]
 noparse = ["noparse-name", "noparse-value"]
 noparse-name = []
