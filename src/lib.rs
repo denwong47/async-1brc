@@ -1,3 +1,5 @@
+#![feature(portable_simd)]
+
 pub mod config;
 pub mod parser;
 pub mod reader;
