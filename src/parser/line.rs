@@ -74,14 +74,13 @@ where
         Ok(count) if count > 0 => Some({
             let mut name_with_semicolon = name.split_off(0);
             name_with_semicolon.pop();
-            name_with_semicolon.into()
+            name_with_semicolon
         }),
         Ok(_) => {
             #[cfg(feature = "debug")]
             println!("parse_name() had an EOF.");
             None
         }
-        // This is normal behaviour when the buffer has ended.
         Err(_err) => {
             #[cfg(feature = "debug")]
             println!("parse_name() read_u8() error: {}", _err);
