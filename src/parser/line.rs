@@ -23,8 +23,8 @@ pub static PARSE_VALUE_TIMED: std::sync::OnceLock<std::sync::Arc<TimedOperation>
 ///
 /// These parsing functions expect perfect input; if the input is not perfect, the behavior is
 /// undefined.
-#[allow(unreachable_code)]
-#[allow(unused_variables)]
+#[allow(unreachable_code, unused_variables, unused_mut)]
+// Unused mut is used to prevent warnings when the `nohash` feature is disabled.
 pub async fn parse_bytes<R>(mut bytes: R, records: &mut models::StationRecords)
 where
     R: AsyncReadExt + AsyncBufReadExt + Unpin,
@@ -74,6 +74,8 @@ where
         Ok(count) if count > 0 => Some({
             let mut name_with_semicolon = name.split_off(0);
             name_with_semicolon.pop();
+            // `into` is used here to convert the `Vec<u8>` into a `LiteHashBuffer`...
+            // ...or just to shutup rust analyzer.
             name_with_semicolon
         }),
         Ok(_) => {

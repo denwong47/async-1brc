@@ -356,12 +356,12 @@ mod test {
     #[test]
     fn station_records_insert() {
         let mut records = StationRecords::new();
-        records.insert(b"station1".to_vec(), 1);
-        records.insert(b"station2".to_vec(), 2);
+        records.insert(b"station1".into(), 1);
+        records.insert(b"station2".into(), 2);
 
-        records.insert(b"station1".to_vec(), 3);
-        records.insert(b"station1".to_vec(), 4);
-        records.insert(b"station1".to_vec(), 5);
+        records.insert(b"station1".into(), 3);
+        records.insert(b"station1".into(), 4);
+        records.insert(b"station1".into(), 5);
 
         let stats1 = records.get(&b"station1".into()).unwrap();
 
@@ -383,16 +383,16 @@ mod test {
     #[test]
     fn station_records_add() {
         let mut records1 = StationRecords::new();
-        records1.insert(b"station1".to_vec(), 1);
-        records1.insert(b"station2".to_vec(), 2);
+        records1.insert(b"station1".into(), 1);
+        records1.insert(b"station2".into(), 2);
 
         let mut records2 = StationRecords::new();
-        records2.insert(b"station1".to_vec(), 3);
-        records2.insert(b"station1".to_vec(), 4);
-        records2.insert(b"station1".to_vec(), 5);
-        records2.insert(b"station2".to_vec(), 6);
-        records2.insert(b"station2".to_vec(), 7);
-        records2.insert(b"station2".to_vec(), 8);
+        records2.insert(b"station1".into(), 3);
+        records2.insert(b"station1".into(), 4);
+        records2.insert(b"station1".into(), 5);
+        records2.insert(b"station2".into(), 6);
+        records2.insert(b"station2".into(), 7);
+        records2.insert(b"station2".into(), 8);
 
         let records = records1 + records2;
 
@@ -414,11 +414,11 @@ mod test {
     #[test]
     fn station_records_iter() {
         let mut records = StationRecords::new();
-        records.insert(b"this".to_vec(), 4);
-        records.insert(b"that".to_vec(), 5);
-        records.insert(b"foo".to_vec(), 1);
-        records.insert(b"bar".to_vec(), 2);
-        records.insert(b"baz".to_vec(), 3);
+        records.insert(b"this".into(), 4);
+        records.insert(b"that".into(), 5);
+        records.insert(b"foo".into(), 1);
+        records.insert(b"bar".into(), 2);
+        records.insert(b"baz".into(), 3);
 
         let mut iter = records.iter_sorted();
 
@@ -448,11 +448,11 @@ mod test {
     #[test]
     fn station_records_export() {
         let mut records = StationRecords::new();
-        records.insert(b"this".to_vec(), 4);
-        records.insert(b"that".to_vec(), 5);
-        records.insert(b"foo".to_vec(), 1);
-        records.insert(b"bar".to_vec(), 2);
-        records.insert(b"baz".to_vec(), 3);
+        records.insert(b"this".into(), 4);
+        records.insert(b"that".into(), 5);
+        records.insert(b"foo".into(), 1);
+        records.insert(b"bar".into(), 2);
+        records.insert(b"baz".into(), 3);
 
         assert_eq!(
             records.export_text(),

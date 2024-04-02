@@ -1,11 +1,12 @@
 //! A [`u8`] buffer that just use its first 7 characters as the hash.
 
-#[cfg(feature = "nohash")]
-pub use _nohash_buffer::LiteHashBuffer;
-
 #[cfg(not(feature = "nohash"))]
 pub type LiteHashBuffer = Vec<u8>;
 
+#[cfg(feature = "nohash")]
+pub use _nohash_buffer::LiteHashBuffer;
+
+#[cfg(feature = "nohash")]
 mod _nohash_buffer {
     /// A [`u8`] buffer that just use its first 7 characters as the hash.
     ///
