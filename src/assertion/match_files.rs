@@ -6,6 +6,9 @@ use tokio::{
     io::{AsyncReadExt, BufReader},
 };
 
+#[cfg(feature = "sync")]
+use memmap::Mmap;
+
 /// The size of the chunk to match the files.
 const MATCH_CHUNK_SIZE: usize = 32;
 
@@ -51,6 +54,38 @@ pub async fn match_files(output_path: impl AsRef<Path>, baseline_path: impl AsRe
             _ => {
                 panic!("Error reading the files.");
             }
+        }
+    }
+}
+
+#[cfg(feature = "sync")]
+/// Match the output and the baseline files.
+pub fn match_files_blocking(output_path: impl AsRef<Path>, baseline_path: impl AsRef<Path>) {
+    let output_file = std::fs::File::open(output_path).unwrap();
+    let baseline_file = std::fs::File::open(baseline_path).unwrap();
+
+    let output_reader = unsafe { Mmap::map(&output_file).unwrap() };
+    let baseline_reader = unsafe { Mmap::map(&baseline_file).unwrap() };
+
+    let mut cursor = 0;
+    loop {
+        let output_chunk =
+            &output_reader[cursor..(cursor + MATCH_CHUNK_SIZE).min(output_reader.len())];
+        let baseline_chunk =
+            &baseline_reader[cursor..(cursor + MATCH_CHUNK_SIZE).min(baseline_reader.len())];
+
+        if output_chunk != baseline_chunk {
+            panic!(
+                "The files differ at the following position:\noutput:{}\nbaseline:{}",
+                String::from_utf8_lossy(output_chunk),
+                String::from_utf8_lossy(baseline_chunk)
+            )
+        }
+
+        cursor += MATCH_CHUNK_SIZE;
+
+        if cursor >= output_reader.len() {
+            break;
         }
     }
 }

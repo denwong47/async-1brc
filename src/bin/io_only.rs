@@ -43,13 +43,9 @@ async fn main() {
             _ = reader.read(bufreader) => {},
             _ = async {
                 let mut buffer = Vec::with_capacity(args.max_chunk_size);
-                loop {
-                    if let Some(bytes) = reader.fill(buffer).await {
-                        buffer = bytes;
-                        count += 1;
-                    } else {
-                        break
-                    }
+                while let Some(bytes) = reader.fill(buffer).await {
+                    buffer = bytes;
+                    count += 1;
                 }
             } => {}
         };

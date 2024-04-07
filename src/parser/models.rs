@@ -19,6 +19,12 @@ pub static HASH_INSERT_TIMED: std::sync::OnceLock<std::sync::Arc<TimedOperation>
 #[cfg(feature = "nohash")]
 pub use std::hash::BuildHasherDefault;
 
+#[cfg(feature = "sync")]
+pub use super::sync;
+
+#[cfg(feature = "sync")]
+use rayon::prelude::*;
+
 /// Statistics of a single station.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StationStats {
@@ -264,6 +270,48 @@ impl StationRecords {
         println!("read_from_reader() finished.");
 
         records
+    }
+
+    /// The main synchronous function to read from a [`Mmap`] and parse the data into itself.
+    #[cfg(feature = "sync")]
+    pub fn read_from_iterator<'m>(
+        chunks: impl Iterator<Item = &'m [u8]> + ParallelBridge + Send,
+    ) -> Self {
+        chunks
+            // Inefficient bridge to parallelize the parsing; we will consider making this
+            // a native [`rayon::iter::ParallelIterator`] in the future.
+            .par_bridge()
+            .map(|chunk| {
+                #[cfg(feature = "debug")]
+                println!(
+                    "read_from_iterator() found {len} bytes of data.",
+                    len = chunk.len()
+                );
+
+                let mut records = Self::new();
+                sync::parse_bytes(chunk, &mut records);
+                records
+            })
+            .reduce(Self::new, |mut records, chunk_records| {
+                records += chunk_records;
+                records
+            })
+    }
+
+    #[cfg(feature = "sync")]
+    /// Export the results to a file in the 1BRC format.
+    pub fn export_file_blocking(&self, path: impl AsRef<Path>) {
+        use std::io::Write;
+
+        #[cfg(feature = "timed")]
+        let _ops = TimedOperation::new("StationRecords::export_file()");
+        #[cfg(feature = "timed")]
+        let _counter = _ops.start();
+
+        let mut file = std::fs::File::create(path).expect("Failed to create the file.");
+
+        file.write(self.export_text().as_bytes())
+            .expect(&format!("Failed to write to the file",));
     }
 }
 
