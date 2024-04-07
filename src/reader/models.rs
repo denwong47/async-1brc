@@ -69,6 +69,16 @@ impl RowsReader {
         }
     }
 
+    /// Add additional buffers to the queue.
+    pub fn with_additional_buffers(self, additional_buffers: usize) -> Self {
+        for _ in 0..additional_buffers {
+            self.input_queue
+                .push(Vec::with_capacity(self.max_chunk_size));
+        }
+
+        self
+    }
+
     /// Check if the reader is in progress.
     pub fn in_progress(&self) -> bool {
         self.in_progress.load(Ordering::Relaxed)
@@ -95,7 +105,7 @@ impl RowsReader {
     pub async fn fill(&self, mut buffer: Vec<u8>) -> Option<Vec<u8>> {
         #[cfg(feature = "timed")]
         let _counter = READER_LOCK_TIMED
-            .get_or_init(|| TimedOperation::new("RowsReader::pop()"))
+            .get_or_init(|| TimedOperation::new("RowsReader::fill()"))
             .start();
 
         buffer.clear();
