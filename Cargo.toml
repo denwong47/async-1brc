@@ -15,6 +15,11 @@ name = "io_only"
 path = "src/bin/io_only.rs"
 required-features = ["bench"]
 
+[[bin]]
+name = "mmap_test"
+path = "src/bin/mmap_test.rs"
+
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -22,6 +27,7 @@ clap = { version = "4.5.1", features = ["derive"] }
 deadqueue = "0.2.4"
 gxhash = "3.1.1"
 itertools = "0.12.1"
+memmap = "0.7.0"
 nohash = { version = "0.2.0", optional = true }
 tokio = { version = "1.36.0", features = ["rt-multi-thread", "io-std", "macros", "sync", "io-util", "fs", "time"] }
 
