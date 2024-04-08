@@ -6,6 +6,9 @@ pub mod line;
 
 pub mod models;
 
+#[cfg(feature = "sync")]
+pub mod sync;
+
 pub mod task;
 
 mod hashable_buffer;

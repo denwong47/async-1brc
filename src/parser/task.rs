@@ -5,15 +5,21 @@ use super::models::StationRecords;
 use std::sync::Arc;
 
 /// Create X number of concurrent consumers to read from the same [`RowsReader`].
-pub async fn read_from_reader(reader: Arc<RowsReader>, threads: usize) -> StationRecords {
+pub async fn read_from_reader(
+    reader: Arc<RowsReader>,
+    threads: usize,
+    max_chunk_size: usize,
+) -> StationRecords {
     // If there is only one thread, we can just read from the reader directly.
     if threads <= 1 {
         // Somehow changing this to just awaiting the inner function call makes the code slower??
         // This may be because tokio will spawn a new thread for the inner function call, leaving
         // the main thread to continue with the rest of the code.
-        return tokio::spawn(async move { StationRecords::read_from_reader(&reader).await })
-            .await
-            .unwrap();
+        return tokio::spawn(async move {
+            StationRecords::read_from_reader(&reader, max_chunk_size).await
+        })
+        .await
+        .unwrap();
     }
 
     let mut handles = Vec::with_capacity(threads);
@@ -24,7 +30,7 @@ pub async fn read_from_reader(reader: Arc<RowsReader>, threads: usize) -> Statio
             #[cfg(feature = "debug")]
             println!("task::read_from_reader() spawned consumer #{}", _i);
 
-            StationRecords::read_from_reader(&local_reader).await
+            StationRecords::read_from_reader(&local_reader, max_chunk_size).await
         }));
     }
 

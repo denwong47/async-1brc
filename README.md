@@ -28,6 +28,8 @@ even though it may incur runtime overheads.
 ## Setup requirements
 
 - GNU Make, Rust, JDK 21, and Maven should be installed.
+- Compile the Java reference implementation by running `./mvnw clean verify` in
+  the `../1brc` directory.
 - The [`1brc` repository](https://github.com/gunnarmorling/1brc) should be cloned to
   a parallel directory to this repository, i.e. should be accessible at `../1brc`.
     - `./create_measurements.sh 1000000000` should have been run within the `1brc` repository,
@@ -41,6 +43,15 @@ even though it may incur runtime overheads.
 ```sh
 make run
 ```
+
+## Current timings
+
+The timings are taken on a M1 Pro 10-core machine, using only 8 threads.
+
+File is read from disk directly; no RAM disk is used.
+
+- Tokio Buffered Read: `~9.6s`
+- Mmap + Rayon: `~7.3s`
 
 ## Feature Flags
 

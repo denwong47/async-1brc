@@ -1,7 +1,7 @@
 //! The reader model.
 
 use deadqueue::unlimited::Queue;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::{
     io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt},
     sync::watch,
@@ -26,11 +26,11 @@ pub static READER_LINE_TIMED: std::sync::OnceLock<std::sync::Arc<TimedOperation>
     std::sync::OnceLock::new();
 
 pub struct RowsReader {
-    queue: Queue<Vec<u8>>,
+    output_queue: Queue<Vec<u8>>,
+    input_queue: Queue<Vec<u8>>,
     chunk_size: usize,
     max_chunk_size: usize,
     in_progress: AtomicBool,
-    in_queue: AtomicUsize,
     closed: watch::Sender<bool>,
 }
 
@@ -46,11 +46,11 @@ impl RowsReader {
         let (closed, _) = watch::channel(false);
 
         Self {
-            queue: Queue::new(),
+            output_queue: Queue::new(),
+            input_queue: Queue::new(),
             chunk_size: config::CHUNK_SIZE,
             max_chunk_size: config::MAX_CHUNK_SIZE,
             in_progress: AtomicBool::new(false),
-            in_queue: AtomicUsize::new(0),
             closed,
         }
     }
@@ -60,34 +60,28 @@ impl RowsReader {
         let (closed, _) = watch::channel(false);
 
         Self {
-            queue: Queue::new(),
+            output_queue: Queue::new(),
+            input_queue: Queue::new(),
             chunk_size: usize::max(config::MAX_LINE_LENGTH, chunk_size),
             max_chunk_size,
             in_progress: AtomicBool::new(false),
-            in_queue: AtomicUsize::new(0),
             closed,
         }
+    }
+
+    /// Add additional buffers to the queue.
+    pub fn with_additional_buffers(self, additional_buffers: usize) -> Self {
+        for _ in 0..additional_buffers {
+            self.input_queue
+                .push(Vec::with_capacity(self.max_chunk_size));
+        }
+
+        self
     }
 
     /// Check if the reader is in progress.
     pub fn in_progress(&self) -> bool {
         self.in_progress.load(Ordering::Relaxed)
-    }
-
-    /// Increment the in_queue counter.
-    fn in_queue_increment(&self) -> usize {
-        #[cfg(feature = "debug")]
-        println!("RowsReader: in_queue_increment() incremented in_queue.");
-
-        self.in_queue.fetch_add(1, Ordering::Relaxed) + 1
-    }
-
-    /// Decrement the in_queue counter.
-    fn in_queue_decrement(&self) -> usize {
-        #[cfg(feature = "debug")]
-        println!("RowsReader: in_queue_decrement() decremented in_queue.");
-
-        self.in_queue.fetch_sub(1, Ordering::Relaxed) - 1
     }
 
     /// Return when the reader will no longer yield any more data.
@@ -97,7 +91,7 @@ impl RowsReader {
         rx.wait_for(|v| *v).await?;
 
         loop {
-            if self.queue.is_empty() {
+            if self.output_queue.is_empty() {
                 break;
             }
 
@@ -108,23 +102,55 @@ impl RowsReader {
     }
 
     /// Pop the next buffer from the queue.
-    pub async fn pop(&self) -> Option<Vec<u8>> {
+    pub async fn fill(&self, mut buffer: Vec<u8>) -> Option<Vec<u8>> {
         #[cfg(feature = "timed")]
         let _counter = READER_LOCK_TIMED
-            .get_or_init(|| TimedOperation::new("RowsReader::pop()"))
+            .get_or_init(|| TimedOperation::new("RowsReader::fill()"))
             .start();
 
-        self.in_queue_increment();
+        buffer.clear();
+        self.input_queue.push(buffer);
 
         let result = tokio::select! {
             _ = self.closed() => None,
-            bytes = self.queue.pop() => {
+            bytes = self.output_queue.pop() => {
                 Some(bytes)
             }
         };
 
-        self.in_queue_decrement();
         result
+    }
+
+    /// Push buffer to the queue and reset the buffer.
+    pub async fn export_buffer(&self, buffer_export: &mut Vec<u8>) -> usize {
+        if !buffer_export.is_empty() {
+            #[cfg(feature = "debug")]
+            println!("RowsReader: export_buffer() waiting for available buffer from input_queue.");
+
+            let mut buffer_new = self.input_queue.pop().await;
+
+            #[cfg(feature = "debug")]
+            println!(
+                "RowsReader: export_buffer() has got a buffer of capacity {}.",
+                buffer_new.capacity()
+            );
+
+            {
+                #[cfg(feature = "timed")]
+                let _counter = func::MEM_SWAP_TIMED
+                    .get_or_init(|| TimedOperation::new("mem_swap"))
+                    .start();
+                std::mem::swap(&mut buffer_new, buffer_export);
+            }
+
+            let len = buffer_new.len();
+            self.output_queue.push(buffer_new);
+            len
+        } else {
+            #[cfg(feature = "debug")]
+            println!("RowsReader: push_buffer() skipped empty buffer.");
+            0
+        }
     }
 
     /// Read the file and push the chunks to the queue.
@@ -161,7 +187,7 @@ impl RowsReader {
 
             if bytes_read == 0 // if nothing is read
                 || func::buffer_full(&buffer_export, self.chunk_size) // if the buffer is full
-                || self.in_queue.load(Ordering::Relaxed) > 0
+                || !self.input_queue.is_empty()
             // if something is waiting
             {
                 // Read until the end of line anyway
@@ -178,7 +204,7 @@ impl RowsReader {
                 println!("RowsReader: read() read {bytes_read} bytes up to a new line.");
 
                 func::transfer_buffer(&mut buffer_line, &mut buffer_export);
-                let _bytes_pushed = func::push_buffer(&mut buffer_export, &self.queue);
+                let _bytes_pushed = self.export_buffer(&mut buffer_export).await;
 
                 #[cfg(feature = "debug")]
                 println!("RowsReader: read() flushed {_bytes_pushed} bytes to queue.");

@@ -29,10 +29,10 @@ async fn main() {
     #[cfg(feature = "bench")]
     let start = Instant::now();
 
-    let reader = Arc::new(reader::RowsReader::with_chunk_sizes(
-        args.chunk_size,
-        args.max_chunk_size,
-    ));
+    let reader = Arc::new(
+        reader::RowsReader::with_chunk_sizes(args.chunk_size, args.max_chunk_size)
+            .with_additional_buffers(8),
+    );
 
     let (_, records) = tokio::join!(
         async {
@@ -41,7 +41,7 @@ async fn main() {
 
             reader.read(buffer).await
         },
-        parser::task::read_from_reader(Arc::clone(&reader), args.threads),
+        parser::task::read_from_reader(Arc::clone(&reader), args.threads, args.max_chunk_size),
     );
 
     records.export_file(&args.output).await;
